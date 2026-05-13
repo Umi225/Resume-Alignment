@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-zinc-50 text-zinc-900;
+    font-size: 14px;
+    line-height: 22px;
+  }
+
+  /* 统一滚动条 */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #d4d4d4;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #a3a3a3;
+  }
+}
+
+@layer components {
+  /* 卡片系统 */
+  .card {
+    @apply rounded-card border border-zinc-200 bg-white shadow-card transition-all;
+  }
+  .card-hover:hover {
+    @apply shadow-card-hover border-zinc-300;
+  }
+
+  /* 按钮系统 */
+  .btn-primary {
+    @apply rounded-button bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 active:bg-zinc-900;
+  }
+  .btn-secondary {
+    @apply rounded-button border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 hover:border-zinc-300;
+  }
+  .btn-ghost {
+    @apply rounded-button px-3 py-1.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800;
+  }
+
+  /* 输入框 */
+  .input {
+    @apply rounded-button border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-200;
+  }
+
+  /* 标签 */
+  .tag {
+    @apply inline-flex items-center rounded-md bg-zinc-100 px-2 py-0.5 text-micro text-zinc-600;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

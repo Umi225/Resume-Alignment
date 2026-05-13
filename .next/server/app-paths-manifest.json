@@ -1,0 +1,6 @@
+{
+  "/page": "app/page.js",
+  "/resume-editor/page": "app/resume-editor/page.js",
+  "/experiences/page": "app/experiences/page.js",
+  "/jd-workbench/page": "app/jd-workbench/page.js"
+}
