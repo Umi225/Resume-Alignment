@@ -22,6 +22,7 @@ import {
 
 const filters = [
   { key: null, label: '全部', icon: null as null },
+  { key: 'basicInfo', label: '个人信息', icon: User },
   { key: 'education', label: '教育', icon: GraduationCap },
   { key: 'experience', label: '实习', icon: Briefcase },
   { key: 'project', label: '项目', icon: Code2 },
@@ -67,6 +68,10 @@ export default function ExperiencesPage() {
         safeLen(profile.certifications) +
         safeLen(profile.skills)
       );
+    }
+    if (key === 'basicInfo') {
+      const { basicInfo } = profile;
+      return basicInfo.name || basicInfo.phone || basicInfo.email ? 1 : 0;
     }
     const map: Record<string, keyof typeof profile> = {
       education: 'education',
@@ -170,15 +175,72 @@ export default function ExperiencesPage() {
                   <h2 className="text-h3 text-zinc-900">
                     {filters.find((f) => f.key === filterType)?.label || '全部经历'}
                   </h2>
-                  <p className="mt-0.5 text-small text-zinc-500">
-                    共 {getCount(filterType)} 条原始经历资产
-                  </p>
-                  <p className="mt-1 text-micro text-zinc-400">
-                    此页面仅用于保存和编辑原始经历，AI 不会直接修改任何内容
-                  </p>
+                  {filterType === 'basicInfo' ? (
+                    <>
+                      <p className="mt-0.5 text-small text-zinc-500">
+                        固定基础资料，后续自动进入最终简历
+                      </p>
+                      <p className="mt-1 text-micro text-zinc-400">
+                        无需勾选，所有简历版本默认使用
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="mt-0.5 text-small text-zinc-500">
+                        共 {getCount(filterType)} 条原始经历资产
+                      </p>
+                      <p className="mt-1 text-micro text-zinc-400">
+                        此页面仅用于保存和编辑原始经历，AI 不会直接修改任何内容
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
-              <ExperienceList searchQuery={searchQuery} />
+              {filterType === 'basicInfo' ? (
+                <div className="rounded-card border border-zinc-200 bg-white p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-zinc-100">
+                      {profile.basicInfo.avatar ? (
+                        <img
+                          src={profile.basicInfo.avatar}
+                          alt=""
+                          className="h-full w-full rounded-full object-cover"
+                        />
+                      ) : (
+                        <User className="h-6 w-6 text-zinc-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-body font-medium text-zinc-900">
+                        {profile.basicInfo.name || '未填写姓名'}
+                      </p>
+                      <div className="mt-1 space-y-0.5 text-small text-zinc-500">
+                        {profile.basicInfo.phone && <p>{profile.basicInfo.phone}</p>}
+                        {profile.basicInfo.email && <p>{profile.basicInfo.email}</p>}
+                        {profile.basicInfo.location && <p>{profile.basicInfo.location}</p>}
+                        {profile.basicInfo.github && (
+                          <p className="truncate">{profile.basicInfo.github}</p>
+                        )}
+                      </div>
+                      {profile.basicInfo.summary && (
+                        <p className="mt-2 text-small text-zinc-600">
+                          {profile.basicInfo.summary}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <button
+                      onClick={handleAdd}
+                      className="w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-medium text-white hover:bg-zinc-800"
+                    >
+                      编辑个人信息
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <ExperienceList searchQuery={searchQuery} />
+              )}
             </div>
           </div>
         </div>
