@@ -38,7 +38,8 @@ export default function ExperiencesPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorKind, setEditorKind] = useState<EditorKind | null>(null);
 
-  const handleAdd = (kind: EditorKind) => {
+  const handleAdd = () => {
+    const kind: EditorKind = (filterType as EditorKind) || 'experience';
     setEditorKind(kind);
     selectExperience(null, null);
     setEditorOpen(true);
@@ -119,7 +120,7 @@ export default function ExperiencesPage() {
             {/* 添加按钮 */}
             <div className="flex items-center gap-2">
               <button
-                onClick={() => handleAdd('experience')}
+                onClick={handleAdd}
                 className="btn-primary flex items-center gap-1.5"
               >
                 <Plus className="h-3.5 w-3.5" />
