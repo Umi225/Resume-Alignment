@@ -1,1 +1,23 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Production build
+dist/
+
+# Logs
+*.log
+dev.log
+
+# TypeScript
+tsconfig.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+
+# macOS
+.DS_Store

@@ -10,10 +10,10 @@ import {
 import { PdfExportModal } from '@/components/pdf/PdfExportModal';
 import { useResumeStore } from '@/stores/resumeStore';
 import { cn } from '@/lib/utils';
-import { FileDown, FileText, ZoomIn, ChevronRight, User } from 'lucide-react';
+import { FileDown, FileText, ZoomIn, ChevronRight } from 'lucide-react';
 
 export default function ResumeEditorPage() {
-  const { profile } = useResumeStore();
+  const { profile, updateBasicInfo } = useResumeStore();
   const [activeTemplate, setActiveTemplate] = useState('standard-campus');
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const resumeRef = useRef<HTMLDivElement>(null);
@@ -62,29 +62,54 @@ export default function ResumeEditorPage() {
 
           {/* 右侧：辅助栏 */}
           <aside className="flex w-[240px] flex-shrink-0 flex-col border-l border-zinc-200 bg-white">
-            {/* 个人信息摘要 */}
+            {/* 基础信息编辑 */}
             <div className="border-b border-zinc-100 px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100">
-                  {profile.basicInfo.avatar ? (
-                    <img
-                      src={profile.basicInfo.avatar}
-                      alt=""
-                      className="h-full w-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <User className="h-4 w-4 text-zinc-500" />
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-caption font-medium text-zinc-900 truncate">
-                    {profile.basicInfo.name || '未命名简历'}
-                  </h2>
-                  {profile.basicInfo.email && (
-                    <p className="text-micro text-zinc-400 truncate">
-                      {profile.basicInfo.email}
-                    </p>
-                  )}
+              <h3 className="mb-3 text-micro font-semibold uppercase tracking-wider text-zinc-400">
+                基础信息
+              </h3>
+              <div className="space-y-2.5">
+                <Field
+                  label="姓名"
+                  value={profile.basicInfo.name}
+                  onChange={(v) => updateBasicInfo({ name: v })}
+                />
+                <Field
+                  label="电话"
+                  value={profile.basicInfo.phone}
+                  onChange={(v) => updateBasicInfo({ phone: v })}
+                />
+                <Field
+                  label="邮箱"
+                  value={profile.basicInfo.email}
+                  onChange={(v) => updateBasicInfo({ email: v })}
+                />
+                <Field
+                  label="所在地"
+                  value={profile.basicInfo.location || ''}
+                  onChange={(v) => updateBasicInfo({ location: v })}
+                />
+                <Field
+                  label="GitHub"
+                  value={profile.basicInfo.github || ''}
+                  onChange={(v) => updateBasicInfo({ github: v })}
+                />
+                <Field
+                  label="个人主页"
+                  value={profile.basicInfo.website || ''}
+                  onChange={(v) => updateBasicInfo({ website: v })}
+                />
+                <div>
+                  <label className="mb-1 block text-micro text-zinc-400">
+                    个人总结
+                  </label>
+                  <textarea
+                    value={profile.basicInfo.summary || ''}
+                    onChange={(e) =>
+                      updateBasicInfo({ summary: e.target.value })
+                    }
+                    rows={3}
+                    className="w-full resize-none rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-caption text-zinc-900 outline-none transition-colors focus:border-zinc-400"
+                  />
                 </div>
               </div>
             </div>
@@ -144,6 +169,28 @@ export default function ResumeEditorPage() {
         onClose={() => setExportModalOpen(false)}
       />
     </>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-micro text-zinc-400">{label}</label>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-caption text-zinc-900 outline-none transition-colors focus:border-zinc-400"
+      />
+    </div>
   );
 }
 

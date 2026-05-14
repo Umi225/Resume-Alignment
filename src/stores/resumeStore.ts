@@ -89,12 +89,14 @@ interface ResumeState {
   discardAIOptimization: (id: ID, type: 'experience' | 'project') => void;
 }
 
-export const useResumeStore = create<ResumeState>((set) => ({
-  profile: createEmptyProfile(),
-  selectedId: null,
-  selectedType: null,
-  filterType: null,
-  currentJD: '',
+export const useResumeStore = create<ResumeState>()(
+  persist(
+    (set) => ({
+      profile: createEmptyProfile(),
+      selectedId: null,
+      selectedType: null,
+      filterType: null,
+      currentJD: '',
 
       setFilterType: (type) => set({ filterType: type }),
       setCurrentJD: (jd) => set({ currentJD: jd }),
@@ -378,4 +380,14 @@ export const useResumeStore = create<ResumeState>((set) => ({
             },
           };
         }),
-}));
+    }),
+    {
+      name: 'resume-store-v1',
+      version: 1,
+      partialize: (state) => ({
+        profile: state.profile,
+        currentJD: state.currentJD,
+      }),
+    }
+  )
+);
