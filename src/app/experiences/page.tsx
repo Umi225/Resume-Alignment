@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { ExperienceList } from '@/components/experience/ExperienceList';
 import { ExperienceEditor } from '@/components/experience/ExperienceEditor';
@@ -15,14 +15,10 @@ import {
   Trophy,
   FileCheck,
   Award,
-  Sparkles,
   User,
   Pencil,
   Trash2,
 } from 'lucide-react';
-import { AIRewritePanel } from '@/components/ai/AIRewritePanel';
-import type { Experience, Project } from '@/types/resume';
-import type { RewriteTargetType } from '@/lib/ai/types';
 
 const filters = [
   { key: null, label: '全部', icon: null as null },
@@ -37,13 +33,10 @@ const filters = [
 type EditorKind = 'basicInfo' | 'education' | 'experience' | 'project' | 'award' | 'certification' | 'skill';
 
 export default function ExperiencesPage() {
-  const { profile, filterType, setFilterType, selectedId, selectedType, selectExperience, applyAIOptimization, currentJD } = useResumeStore();
+  const { profile, filterType, setFilterType, selectedId, selectedType, selectExperience } = useResumeStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorKind, setEditorKind] = useState<EditorKind | null>(null);
-  const [aiPanelOpen, setAiPanelOpen] = useState(false);
-  const [aiTarget, setAiTarget] = useState<Experience | Project | null>(null);
-  const [aiTargetType, setAiTargetType] = useState<RewriteTargetType | null>(null);
 
   const handleAdd = (kind: EditorKind) => {
     setEditorKind(kind);
@@ -61,26 +54,6 @@ export default function ExperiencesPage() {
     setEditorOpen(false);
     setEditorKind(null);
   };
-
-  const handleAIOptimize = useCallback((item: Experience | Project, type: RewriteTargetType) => {
-    setAiTarget(item);
-    setAiTargetType(type);
-    setAiPanelOpen(true);
-  }, []);
-
-  const handleApplyAIOptimization = useCallback((optimizedBullets: string[]) => {
-    if (!aiTarget || !aiTargetType) return;
-    applyAIOptimization(aiTarget.id, aiTargetType, optimizedBullets);
-    setAiPanelOpen(false);
-    setAiTarget(null);
-    setAiTargetType(null);
-  }, [aiTarget, aiTargetType, applyAIOptimization]);
-
-  const handleCloseAIPanel = useCallback(() => {
-    setAiPanelOpen(false);
-    setAiTarget(null);
-    setAiTargetType(null);
-  }, []);
 
   const getCount = (key: string | null) => {
     const safeLen = (arr: unknown[] | undefined) => arr?.length ?? 0;
@@ -118,21 +91,13 @@ export default function ExperiencesPage() {
   return (
     <>
       <AppShell
-        title="经历资产"
+        title="经历资产库"
         rightPanel={
           <RightPanel
             profile={profile}
             selectedItem={selectedItem}
             selectedType={selectedType}
             onEdit={handleEdit}
-            onAIOptimize={() => {
-              if (selectedItem && (selectedType === 'experience' || selectedType === 'project')) {
-                handleAIOptimize(selectedItem as Experience | Project, selectedType);
-              }
-            }}
-            onDelete={() => {
-              // handled in list
-            }}
           />
         }
       >
@@ -205,14 +170,14 @@ export default function ExperiencesPage() {
                     {filters.find((f) => f.key === filterType)?.label || '全部经历'}
                   </h2>
                   <p className="mt-0.5 text-small text-zinc-500">
-                    共 {getCount(filterType)} 条经历资产
+                    共 {getCount(filterType)} 条原始经历资产
+                  </p>
+                  <p className="mt-1 text-micro text-zinc-400">
+                    此页面仅用于保存和编辑原始经历，AI 不会直接修改任何内容
                   </p>
                 </div>
               </div>
-              <ExperienceList
-                searchQuery={searchQuery}
-                onAIOptimize={handleAIOptimize}
-              />
+              <ExperienceList searchQuery={searchQuery} />
             </div>
           </div>
         </div>
@@ -224,21 +189,12 @@ export default function ExperiencesPage() {
         itemId={selectedId}
         onClose={handleCloseEditor}
       />
-
-      <AIRewritePanel
-        isOpen={aiPanelOpen}
-        target={aiTarget}
-        targetType={aiTargetType}
-        jobDescription={currentJD}
-        onClose={handleCloseAIPanel}
-        onApply={handleApplyAIOptimization}
-      />
     </>
   );
 }
 
 // ============================================
-// 右侧 AI 辅助栏（弱化）
+// 右侧信息栏
 // ============================================
 
 function RightPanel({
@@ -246,14 +202,11 @@ function RightPanel({
   selectedItem,
   selectedType,
   onEdit,
-  onAIOptimize,
 }: {
   profile: any;
   selectedItem: any;
   selectedType: string | null;
   onEdit: () => void;
-  onAIOptimize: () => void;
-  onDelete: () => void;
 }) {
   return (
     <div className="flex h-full flex-col">
@@ -290,15 +243,6 @@ function RightPanel({
               选中经历
             </h3>
             <div className="space-y-2">
-              {(selectedType === 'experience' || selectedType === 'project') && (
-                <button
-                  onClick={onAIOptimize}
-                  className="btn-secondary w-full flex items-center justify-center gap-1.5"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  AI 优化
-                </button>
-              )}
               <button
                 onClick={onEdit}
                 className="btn-ghost w-full flex items-center justify-center gap-1.5"
@@ -323,7 +267,7 @@ function RightPanel({
         <div className="flex-1 px-5 py-4">
           <div className="rounded-card border border-dashed border-zinc-200 bg-zinc-50 p-4 text-center">
             <p className="text-small text-zinc-500">选择一条经历以查看详情</p>
-            <p className="mt-1 text-micro text-zinc-400">AI 辅助功能将在此处显示</p>
+            <p className="mt-1 text-micro text-zinc-400">原始经历仅用于保存和编辑</p>
           </div>
         </div>
       )}
@@ -345,7 +289,7 @@ function SelectedItemPreview({ item, type }: { item: any; type: string | null })
         <ul className="mt-2 space-y-1">
           {item.bullets.slice(0, 2).map((b: string, i: number) => (
             <li key={i} className="text-micro text-zinc-500 line-clamp-2">
-              · {b}
+              &middot; {b}
             </li>
           ))}
         </ul>

@@ -160,6 +160,8 @@ export interface Experience {
   tags: string[];
   /** AI 优化建议（不覆盖原文） */
   aiOptimized?: AIOptimization;
+  /** AI 推荐版本（JD 对齐生成，独立于原始经历） */
+  optimizedVersion?: AIOptimization;
   /** 是否为重点经历，模板可据此突出展示 */
   featured?: boolean;
 }
@@ -190,6 +192,8 @@ export interface Project {
   outcome?: string;
   /** AI 优化建议（不覆盖原文） */
   aiOptimized?: AIOptimization;
+  /** AI 推荐版本（JD 对齐生成，独立于原始经历） */
+  optimizedVersion?: AIOptimization;
   /** 是否为重点项目 */
   featured?: boolean;
 }

@@ -50,6 +50,8 @@ interface ResumeState {
   filterType: string | null;
   // 当前 JD（用于 AI 优化和 JD 对齐）
   currentJD: string;
+  // 已勾选使用推荐版本的经历/项目 ID（用于最终简历生成）
+  selectedOptimizedIds: ID[];
   // Actions
   setFilterType: (type: string | null) => void;
   setCurrentJD: (jd: string) => void;
@@ -80,13 +82,16 @@ interface ResumeState {
   addSkill: (skill: Omit<Skill, 'id'>) => void;
   updateSkill: (id: ID, skill: Partial<Skill>) => void;
   removeSkill: (id: ID) => void;
-  // AI Optimization
+  // AI Optimization — 生成推荐版本（不覆盖原始经历）
   applyAIOptimization: (
     id: ID,
     type: 'experience' | 'project',
     optimizedBullets: string[]
   ) => void;
   discardAIOptimization: (id: ID, type: 'experience' | 'project') => void;
+  // 推荐版本勾选（用于最终简历）
+  toggleOptimizedSelection: (id: ID) => void;
+  clearOptimizedSelection: () => void;
 }
 
 export const useResumeStore = create<ResumeState>()(
@@ -97,6 +102,7 @@ export const useResumeStore = create<ResumeState>()(
       selectedType: null,
       filterType: null,
       currentJD: '',
+      selectedOptimizedIds: [],
 
       setFilterType: (type) => set({ filterType: type }),
       setCurrentJD: (jd) => set({ currentJD: jd }),
@@ -306,7 +312,7 @@ export const useResumeStore = create<ResumeState>()(
           selectedId: state.selectedId === id ? null : state.selectedId,
         })),
 
-      // AI Optimization
+      // AI Optimization — 写入 optimizedVersion，不覆盖原始经历
       applyAIOptimization: (id, type, optimizedBullets) =>
         set((state) => {
           const now = new Date().toISOString();
@@ -318,10 +324,9 @@ export const useResumeStore = create<ResumeState>()(
                   item.id === id
                     ? {
                         ...item,
-                        bullets: optimizedBullets,
-                        aiOptimized: {
+                        optimizedVersion: {
                           bullets: optimizedBullets,
-                          explanation: 'AI 优化已应用',
+                          explanation: 'AI 按 JD 优化的推荐版本',
                           applied: true,
                         },
                       }
@@ -338,10 +343,9 @@ export const useResumeStore = create<ResumeState>()(
                 item.id === id
                   ? {
                       ...item,
-                      bullets: optimizedBullets,
-                      aiOptimized: {
+                      optimizedVersion: {
                         bullets: optimizedBullets,
-                        explanation: 'AI 优化已应用',
+                        explanation: 'AI 按 JD 优化的推荐版本',
                         applied: true,
                       },
                     }
@@ -361,7 +365,7 @@ export const useResumeStore = create<ResumeState>()(
                 ...state.profile,
                 experience: state.profile.experience.map((item) =>
                   item.id === id
-                    ? { ...item, aiOptimized: undefined }
+                    ? { ...item, optimizedVersion: undefined }
                     : item
                 ),
                 updatedAt: now,
@@ -373,13 +377,26 @@ export const useResumeStore = create<ResumeState>()(
               ...state.profile,
               projects: state.profile.projects.map((item) =>
                 item.id === id
-                  ? { ...item, aiOptimized: undefined }
+                  ? { ...item, optimizedVersion: undefined }
                   : item
               ),
               updatedAt: now,
             },
           };
         }),
+
+      // 推荐版本勾选
+      toggleOptimizedSelection: (id) =>
+        set((state) => {
+          const exists = state.selectedOptimizedIds.includes(id);
+          return {
+            selectedOptimizedIds: exists
+              ? state.selectedOptimizedIds.filter((i) => i !== id)
+              : [...state.selectedOptimizedIds, id],
+          };
+        }),
+
+      clearOptimizedSelection: () => set({ selectedOptimizedIds: [] }),
     }),
     {
       name: 'resume-store-v1',
@@ -387,6 +404,7 @@ export const useResumeStore = create<ResumeState>()(
       partialize: (state) => ({
         profile: state.profile,
         currentJD: state.currentJD,
+        selectedOptimizedIds: state.selectedOptimizedIds,
       }),
     }
   )

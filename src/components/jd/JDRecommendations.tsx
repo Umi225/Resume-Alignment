@@ -15,7 +15,11 @@ import {
   ChevronUp,
   Target,
   Sparkles,
+  Wand2,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
+import type { Experience, Project } from '@/types/resume';
 
 const kindConfig: Record<
   AssetKind,
@@ -93,11 +97,25 @@ function getAssetSubtitle(result: AssetMatchResult): string {
   }
 }
 
-interface JDRecommendationsProps {
-  matches: AssetMatchResult[];
+function getAssetId(result: AssetMatchResult): string {
+  return (result.asset as { id: string }).id;
 }
 
-export function JDRecommendations({ matches }: JDRecommendationsProps) {
+interface JDRecommendationsProps {
+  matches: AssetMatchResult[];
+  optimizedIds?: string[];
+  selectedIds?: string[];
+  onGenerateOptimize?: (asset: Experience | Project, kind: 'experience' | 'project') => void;
+  onToggleSelect?: (id: string) => void;
+}
+
+export function JDRecommendations({
+  matches,
+  optimizedIds = [],
+  selectedIds = [],
+  onGenerateOptimize,
+  onToggleSelect,
+}: JDRecommendationsProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   if (matches.length === 0) {
@@ -127,11 +145,15 @@ export function JDRecommendations({ matches }: JDRecommendationsProps) {
         {matches.map((result) => {
           const config = kindConfig[result.kind];
           const Icon = config.icon;
-          const isExpanded = expandedId === `${result.kind}-${getAssetTitle(result)}`;
+          const assetId = getAssetId(result);
+          const isExpanded = expandedId === `${result.kind}-${assetId}`;
+          const isOptimized = optimizedIds.includes(assetId);
+          const isSelected = selectedIds.includes(assetId);
+          const canOptimize = result.kind === 'experience' || result.kind === 'project';
 
           return (
             <div
-              key={`${result.kind}-${getAssetTitle(result)}`}
+              key={`${result.kind}-${assetId}`}
               className={cn(
                 'rounded-card border bg-white transition-all',
                 result.score >= 60
@@ -140,12 +162,7 @@ export function JDRecommendations({ matches }: JDRecommendationsProps) {
               )}
             >
               {/* Header */}
-              <button
-                onClick={() =>
-                  setExpandedId(isExpanded ? null : `${result.kind}-${getAssetTitle(result)}`)
-                }
-                className="flex w-full items-start gap-3 p-3 text-left"
-              >
+              <div className="flex w-full items-start gap-3 p-3">
                 {/* Kind badge */}
                 <span
                   className={cn(
@@ -163,6 +180,12 @@ export function JDRecommendations({ matches }: JDRecommendationsProps) {
                     <span className={cn('rounded px-1.5 py-0 text-micro', config.bg, config.color)}>
                       {config.label}
                     </span>
+                    {isOptimized && (
+                      <span className="inline-flex items-center gap-0.5 rounded bg-blue-50 px-1.5 py-0 text-[10px] font-medium text-blue-600">
+                        <Wand2 className="h-2.5 w-2.5" />
+                        已优化
+                      </span>
+                    )}
                   </div>
                   {getAssetSubtitle(result) && (
                     <p className="text-micro text-zinc-500 truncate">{getAssetSubtitle(result)}</p>
@@ -186,16 +209,80 @@ export function JDRecommendations({ matches }: JDRecommendationsProps) {
                   )}
                 </div>
 
-                {/* Score + expand */}
+                {/* Score + actions */}
                 <div className="flex shrink-0 items-center gap-1">
                   <MatchScore score={result.score} size="sm" showLabel={false} />
-                  {isExpanded ? (
-                    <ChevronUp className="h-4 w-4 text-zinc-400" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-zinc-400" />
+                </div>
+              </div>
+
+              {/* Actions bar */}
+              <div className="flex items-center justify-between border-t border-zinc-100 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  {canOptimize && (
+                    <>
+                      <button
+                        onClick={() => {
+                          if (isOptimized) {
+                            onToggleSelect?.(assetId);
+                          } else if (result.kind === 'experience' || result.kind === 'project') {
+                            onGenerateOptimize?.(result.asset as Experience | Project, result.kind);
+                          }
+                        }}
+                        className={cn(
+                          'inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-micro font-medium transition-colors',
+                          isOptimized
+                            ? isSelected
+                              ? 'bg-zinc-900 text-white'
+                              : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                            : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                        )}
+                      >
+                        {isOptimized ? (
+                          isSelected ? (
+                            <>
+                              <CheckSquare className="h-3 w-3" />
+                              已勾选
+                            </>
+                          ) : (
+                            <>
+                              <Square className="h-3 w-3" />
+                              勾选此推荐
+                            </>
+                          )
+                        ) : (
+                          <>
+                            <Sparkles className="h-3 w-3" />
+                            生成推荐版本
+                          </>
+                        )}
+                      </button>
+                      {isOptimized && !isSelected && (result.kind === 'experience' || result.kind === 'project') && (
+                        <button
+                          onClick={() => {
+                            const kind = result.kind as 'experience' | 'project';
+                            onGenerateOptimize?.(result.asset as Experience | Project, kind);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-zinc-400 hover:text-zinc-600 transition-colors"
+                        >
+                          重新生成
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
-              </button>
+                <button
+                  onClick={() =>
+                    setExpandedId(isExpanded ? null : `${result.kind}-${assetId}`)
+                  }
+                  className="flex items-center gap-0.5 text-micro text-zinc-400 hover:text-zinc-600"
+                >
+                  {isExpanded ? (
+                    <>收起 <ChevronUp className="h-3.5 w-3.5" /></>
+                  ) : (
+                    <>详情 <ChevronDown className="h-3.5 w-3.5" /></>
+                  )}
+                </button>
+              </div>
 
               {/* Expanded details */}
               {isExpanded && (
@@ -205,6 +292,22 @@ export function JDRecommendations({ matches }: JDRecommendationsProps) {
                     <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
                     <p className="text-micro leading-relaxed text-zinc-600">{result.reason}</p>
                   </div>
+
+                  {/* Optimized version preview */}
+                  {isOptimized && (result.asset as Experience | Project).optimizedVersion && (
+                    <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+                      <p className="text-micro font-semibold uppercase tracking-wider text-blue-600 mb-2">
+                        AI 推荐版本
+                      </p>
+                      <ul className="space-y-1">
+                        {(result.asset as Experience | Project).optimizedVersion!.bullets.map((b, i) => (
+                          <li key={i} className="text-micro leading-relaxed text-zinc-700">
+                            · {b}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
                   {/* Match details */}
                   {result.details.length > 0 && (

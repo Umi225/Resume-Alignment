@@ -17,7 +17,7 @@ import {
   Pencil,
   Trash2,
   Star,
-  Sparkles,
+  Wand2,
 } from 'lucide-react';
 
 type ExperienceItem =
@@ -43,7 +43,6 @@ interface ExperienceCardProps {
   onClick?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
-  onAIOptimize?: () => void;
 }
 
 export function ExperienceCard({
@@ -52,10 +51,10 @@ export function ExperienceCard({
   onClick,
   onEdit,
   onDelete,
-  onAIOptimize,
 }: ExperienceCardProps) {
   const config = kindConfig[item.kind];
   const Icon = config.icon;
+  const hasOptimized = (item.kind === 'experience' || item.kind === 'project') && (item as Experience | Project).optimizedVersion;
 
   return (
     <div
@@ -81,20 +80,14 @@ export function ExperienceCard({
           {item.kind === 'project' && item.featured && (
             <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
           )}
+          {hasOptimized && (
+            <span className="inline-flex items-center gap-0.5 rounded bg-blue-50 px-1.5 py-0 text-[10px] font-medium text-blue-600">
+              <Wand2 className="h-2.5 w-2.5" />
+              已生成推荐版
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-          {(item.kind === 'experience' || item.kind === 'project') && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onAIOptimize?.();
-              }}
-              className="rounded p-1 text-zinc-400 hover:bg-blue-50 hover:text-blue-600"
-              title="AI 优化"
-            >
-              <Sparkles className="h-3 w-3" />
-            </button>
-          )}
           <button
             onClick={(e) => {
               e.stopPropagation();

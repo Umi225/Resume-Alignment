@@ -11,7 +11,6 @@ import type {
   Certification,
   Skill,
 } from '@/types/resume';
-import type { RewriteTargetType } from '@/lib/ai/types';
 
 interface FlatItem {
   id: string;
@@ -22,10 +21,9 @@ interface FlatItem {
 
 interface ExperienceListProps {
   searchQuery?: string;
-  onAIOptimize?: (item: Experience | Project, type: RewriteTargetType) => void;
 }
 
-export function ExperienceList({ searchQuery = '', onAIOptimize }: ExperienceListProps) {
+export function ExperienceList({ searchQuery = '' }: ExperienceListProps) {
   const {
     profile,
     filterType,
@@ -137,11 +135,6 @@ export function ExperienceList({ searchQuery = '', onAIOptimize }: ExperienceLis
           onClick={() => selectExperience(item.id, item.kind)}
           onEdit={() => selectExperience(item.id, item.kind)}
           onDelete={() => handleDelete(item.kind, item.id)}
-          onAIOptimize={() => {
-            if (item.kind === 'experience' || item.kind === 'project') {
-              onAIOptimize?.(item.data as Experience | Project, item.kind);
-            }
-          }}
         />
       ))}
     </div>
