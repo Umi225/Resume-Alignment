@@ -76,6 +76,19 @@ export interface AIOptimization {
   applied: boolean;
 }
 
+/**
+ * JD 对齐后的 AI 推荐版本
+ * 与原始经历完全独立，主展示用
+ */
+export interface OptimizedVersion {
+  /** STAR 优化后的完整文案 */
+  content: string;
+  /** JD 匹配分数（0-100） */
+  jdScore?: number;
+  /** 匹配到的亮点关键词 */
+  highlights?: string[];
+}
+
 // ============================================
 // 经历资产类型（Experience Assets）
 // ============================================
@@ -161,7 +174,7 @@ export interface Experience {
   /** AI 优化建议（不覆盖原文） */
   aiOptimized?: AIOptimization;
   /** AI 推荐版本（JD 对齐生成，独立于原始经历） */
-  optimizedVersion?: AIOptimization;
+  optimizedVersion?: OptimizedVersion;
   /** 是否为重点经历，模板可据此突出展示 */
   featured?: boolean;
 }
@@ -193,7 +206,7 @@ export interface Project {
   /** AI 优化建议（不覆盖原文） */
   aiOptimized?: AIOptimization;
   /** AI 推荐版本（JD 对齐生成，独立于原始经历） */
-  optimizedVersion?: AIOptimization;
+  optimizedVersion?: OptimizedVersion;
   /** 是否为重点项目 */
   featured?: boolean;
 }

@@ -18,6 +18,7 @@ import {
   Wand2,
   CheckSquare,
   Square,
+  FileText,
 } from 'lucide-react';
 import type { Experience, Project } from '@/types/resume';
 
@@ -101,6 +102,13 @@ function getAssetId(result: AssetMatchResult): string {
   return (result.asset as { id: string }).id;
 }
 
+function getAssetBullets(result: AssetMatchResult): string[] {
+  if (result.kind === 'experience' || result.kind === 'project') {
+    return (result.asset as Experience | Project).bullets;
+  }
+  return [];
+}
+
 interface JDRecommendationsProps {
   matches: AssetMatchResult[];
   optimizedIds?: string[];
@@ -117,6 +125,7 @@ export function JDRecommendations({
   onToggleSelect,
 }: JDRecommendationsProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showOriginalFor, setShowOriginalFor] = useState<Set<string>>(new Set());
 
   if (matches.length === 0) {
     return (
@@ -128,19 +137,26 @@ export function JDRecommendations({
     );
   }
 
-  const highMatches = matches.filter((m) => m.score >= 40);
-  const lowMatches = matches.filter((m) => m.score < 40);
+  const toggleOriginal = (id: string) => {
+    setShowOriginalFor((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-3">
-      {/* Summary */}
       <div className="flex items-center justify-between px-1">
         <span className="text-small font-medium text-zinc-700">
-          共 {matches.length} 条 · 高匹配 {highMatches.length} 条
+          共 {matches.length} 条匹配结果
         </span>
       </div>
 
-      {/* Match list */}
       <div className="space-y-2">
         {matches.map((result) => {
           const config = kindConfig[result.kind];
@@ -150,20 +166,22 @@ export function JDRecommendations({
           const isOptimized = optimizedIds.includes(assetId);
           const isSelected = selectedIds.includes(assetId);
           const canOptimize = result.kind === 'experience' || result.kind === 'project';
+          const optimizedVersion =
+            canOptimize
+              ? (result.asset as Experience | Project).optimizedVersion
+              : undefined;
+          const showOriginal = showOriginalFor.has(assetId);
 
           return (
             <div
               key={`${result.kind}-${assetId}`}
               className={cn(
                 'rounded-card border bg-white transition-all',
-                result.score >= 60
-                  ? 'border-zinc-300'
-                  : 'border-zinc-200'
+                isSelected ? 'border-zinc-900' : 'border-zinc-200'
               )}
             >
               {/* Header */}
               <div className="flex w-full items-start gap-3 p-3">
-                {/* Kind badge */}
                 <span
                   className={cn(
                     'mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
@@ -173,101 +191,73 @@ export function JDRecommendations({
                   <Icon className={cn('h-3.5 w-3.5', config.color)} />
                 </span>
 
-                {/* Content */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-caption font-medium text-zinc-900 truncate">{getAssetTitle(result)}</span>
+                    <span className="text-caption font-medium text-zinc-900 truncate">
+                      {getAssetTitle(result)}
+                    </span>
                     <span className={cn('rounded px-1.5 py-0 text-micro', config.bg, config.color)}>
                       {config.label}
                     </span>
-                    {isOptimized && (
-                      <span className="inline-flex items-center gap-0.5 rounded bg-blue-50 px-1.5 py-0 text-[10px] font-medium text-blue-600">
-                        <Wand2 className="h-2.5 w-2.5" />
-                        已优化
-                      </span>
-                    )}
                   </div>
                   {getAssetSubtitle(result) && (
                     <p className="text-micro text-zinc-500 truncate">{getAssetSubtitle(result)}</p>
                   )}
 
-                  {/* Matched keywords */}
-                  {result.matchedKeywords.length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap gap-1">
-                      {result.matchedKeywords.slice(0, 4).map((kw) => (
-                        <span
-                          key={kw}
-                          className="rounded bg-emerald-50 px-1.5 py-0 text-[10px] font-medium text-emerald-700"
-                        >
-                          {kw}
-                        </span>
-                      ))}
-                      {result.matchedKeywords.length > 4 && (
-                        <span className="text-micro text-zinc-400">+{result.matchedKeywords.length - 4}</span>
-                      )}
-                    </div>
-                  )}
+                  {/* Match score + keywords */}
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <MatchScore score={result.score} size="sm" showLabel={true} />
+                    {result.matchedKeywords.slice(0, 3).map((kw) => (
+                      <span
+                        key={kw}
+                        className="rounded bg-emerald-50 px-1.5 py-0 text-[10px] font-medium text-emerald-700"
+                      >
+                        {kw}
+                      </span>
+                    ))}
+                    {result.matchedKeywords.length > 3 && (
+                      <span className="text-micro text-zinc-400">
+                        +{result.matchedKeywords.length - 3}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Score + actions */}
-                <div className="flex shrink-0 items-center gap-1">
-                  <MatchScore score={result.score} size="sm" showLabel={false} />
-                </div>
+                {/* 勾选框 */}
+                {isOptimized && (
+                  <button
+                    onClick={() => onToggleSelect?.(assetId)}
+                    className="shrink-0"
+                  >
+                    {isSelected ? (
+                      <CheckSquare className="h-5 w-5 text-zinc-900" />
+                    ) : (
+                      <Square className="h-5 w-5 text-zinc-400 hover:text-zinc-600" />
+                    )}
+                  </button>
+                )}
               </div>
 
-              {/* Actions bar */}
+              {/* Actions */}
               <div className="flex items-center justify-between border-t border-zinc-100 px-3 py-2">
                 <div className="flex items-center gap-2">
-                  {canOptimize && (
-                    <>
-                      <button
-                        onClick={() => {
-                          if (isOptimized) {
-                            onToggleSelect?.(assetId);
-                          } else if (result.kind === 'experience' || result.kind === 'project') {
-                            onGenerateOptimize?.(result.asset as Experience | Project, result.kind);
-                          }
-                        }}
-                        className={cn(
-                          'inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-micro font-medium transition-colors',
-                          isOptimized
-                            ? isSelected
-                              ? 'bg-zinc-900 text-white'
-                              : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-                            : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                        )}
-                      >
-                        {isOptimized ? (
-                          isSelected ? (
-                            <>
-                              <CheckSquare className="h-3 w-3" />
-                              已勾选
-                            </>
-                          ) : (
-                            <>
-                              <Square className="h-3 w-3" />
-                              勾选此推荐
-                            </>
-                          )
-                        ) : (
-                          <>
-                            <Sparkles className="h-3 w-3" />
-                            生成推荐版本
-                          </>
-                        )}
-                      </button>
-                      {isOptimized && !isSelected && (result.kind === 'experience' || result.kind === 'project') && (
-                        <button
-                          onClick={() => {
-                            const kind = result.kind as 'experience' | 'project';
-                            onGenerateOptimize?.(result.asset as Experience | Project, kind);
-                          }}
-                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-zinc-400 hover:text-zinc-600 transition-colors"
-                        >
-                          重新生成
-                        </button>
-                      )}
-                    </>
+                  {canOptimize && !isOptimized && (
+                    <button
+                      onClick={() => {
+                        const kind = result.kind as 'experience' | 'project';
+                        onGenerateOptimize?.(result.asset as Experience | Project, kind);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-micro font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      生成推荐版本
+                    </button>
+                  )}
+                  {isOptimized && (
+                    <span className="inline-flex items-center gap-1 text-micro text-blue-600">
+                      <Wand2 className="h-3 w-3" />
+                      已生成推荐版
+                    </span>
                   )}
                 </div>
                 <button
@@ -279,37 +269,76 @@ export function JDRecommendations({
                   {isExpanded ? (
                     <>收起 <ChevronUp className="h-3.5 w-3.5" /></>
                   ) : (
-                    <>详情 <ChevronDown className="h-3.5 w-3.5" /></>
+                    <>展开 <ChevronDown className="h-3.5 w-3.5" /></>
                   )}
                 </button>
               </div>
 
-              {/* Expanded details */}
+              {/* Expanded content */}
               {isExpanded && (
-                <div className="border-t border-zinc-100 px-3 py-3">
-                  {/* Reason */}
-                  <div className="mb-3 flex items-start gap-2">
-                    <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
-                    <p className="text-micro leading-relaxed text-zinc-600">{result.reason}</p>
-                  </div>
-
-                  {/* Optimized version preview */}
-                  {isOptimized && (result.asset as Experience | Project).optimizedVersion && (
-                    <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50/50 p-3">
-                      <p className="text-micro font-semibold uppercase tracking-wider text-blue-600 mb-2">
-                        AI 推荐版本
-                      </p>
-                      <ul className="space-y-1">
-                        {(result.asset as Experience | Project).optimizedVersion!.bullets.map((b, i) => (
-                          <li key={i} className="text-micro leading-relaxed text-zinc-700">
-                            · {b}
-                          </li>
-                        ))}
-                      </ul>
+                <div className="border-t border-zinc-100 px-3 py-3 space-y-3">
+                  {/* AI 推荐版本 — 主展示 */}
+                  {optimizedVersion && (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-micro font-semibold text-blue-700">
+                          AI 推荐版本
+                        </p>
+                        {optimizedVersion.jdScore !== undefined && (
+                          <span className="text-[10px] font-medium text-blue-600">
+                            匹配度 {optimizedVersion.jdScore}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-micro leading-relaxed text-zinc-700 whitespace-pre-line">
+                        {optimizedVersion.content}
+                      </div>
+                      {optimizedVersion.highlights && optimizedVersion.highlights.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {optimizedVersion.highlights.map((h) => (
+                            <span
+                              key={h}
+                              className="rounded bg-white px-1.5 py-0 text-[10px] font-medium text-emerald-700 border border-emerald-200"
+                            >
+                              {h}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {/* Match details */}
+                  {/* 原始经历 — 可折叠 */}
+                  {canOptimize && getAssetBullets(result).length > 0 && (
+                    <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+                      <button
+                        onClick={() => toggleOriginal(assetId)}
+                        className="flex items-center gap-1.5 text-micro font-medium text-zinc-500 hover:text-zinc-700 mb-2"
+                      >
+                        <FileText className="h-3 w-3" />
+                        原始经历
+                        {showOriginal ? (
+                          <ChevronUp className="h-3 w-3" />
+                        ) : (
+                          <ChevronDown className="h-3 w-3" />
+                        )}
+                      </button>
+                      {showOriginal && (
+                        <ul className="space-y-1">
+                          {getAssetBullets(result).map((b, i) => (
+                            <li
+                              key={i}
+                              className="text-micro leading-relaxed text-zinc-500"
+                            >
+                              · {b}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 匹配详情 */}
                   {result.details.length > 0 && (
                     <div className="space-y-1.5">
                       <p className="text-micro font-semibold uppercase tracking-wider text-zinc-400">
@@ -342,15 +371,6 @@ export function JDRecommendations({
           );
         })}
       </div>
-
-      {/* Low match hint */}
-      {lowMatches.length > 0 && highMatches.length === 0 && (
-        <div className="rounded-card border border-amber-200 bg-amber-50 p-3">
-          <p className="text-micro text-amber-700">
-            当前经历与 JD 的匹配度较低。建议补充相关经历或优化现有描述中的关键词。
-          </p>
-        </div>
-      )}
     </div>
   );
 }

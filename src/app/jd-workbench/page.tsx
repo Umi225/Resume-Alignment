@@ -52,12 +52,20 @@ export default function JDWorkbenchPage() {
   const handleApplyAIOptimization = useCallback(
     (optimizedBullets: string[]) => {
       if (!aiTarget || !aiTargetType) return;
-      applyAIOptimization(aiTarget.id, aiTargetType, optimizedBullets);
+      const match = matches.find(
+        (m) => (m.asset as Experience | Project).id === aiTarget.id
+      );
+      const content = optimizedBullets.join('\n');
+      applyAIOptimization(aiTarget.id, aiTargetType, {
+        content,
+        jdScore: match?.score,
+        highlights: match?.matchedKeywords,
+      });
       setAiPanelOpen(false);
       setAiTarget(null);
       setAiTargetType(null);
     },
-    [aiTarget, aiTargetType, applyAIOptimization]
+    [aiTarget, aiTargetType, matches, applyAIOptimization]
   );
 
   const handleCloseAIPanel = useCallback(() => {

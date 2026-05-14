@@ -42,18 +42,30 @@ export default function ResumeEditorPage() {
     isValidTemplateId(activeTemplate) ? activeTemplate : 'standard-campus'
   );
 
-  // 合成预览用的 profile：已勾选推荐经历的 bullets 替换为 optimizedVersion
+  // 合成预览用的 profile：已勾选推荐经历的 bullets 替换为 optimizedVersion.content 拆分后的数组
   const previewProfile = useMemo<ResumeProfile>(() => {
     return {
       ...profile,
       experience: profile.experience.map((exp) =>
         selectedOptimizedIds.includes(exp.id) && exp.optimizedVersion
-          ? { ...exp, bullets: exp.optimizedVersion.bullets }
+          ? {
+              ...exp,
+              bullets: exp.optimizedVersion.content
+                .split('\n')
+                .map((line) => line.replace(/^·\s*/, '').trim())
+                .filter(Boolean),
+            }
           : exp
       ),
       projects: profile.projects.map((proj) =>
         selectedOptimizedIds.includes(proj.id) && proj.optimizedVersion
-          ? { ...proj, bullets: proj.optimizedVersion.bullets }
+          ? {
+              ...proj,
+              bullets: proj.optimizedVersion.content
+                .split('\n')
+                .map((line) => line.replace(/^·\s*/, '').trim())
+                .filter(Boolean),
+            }
           : proj
       ),
     };

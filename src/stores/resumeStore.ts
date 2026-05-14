@@ -86,7 +86,7 @@ interface ResumeState {
   applyAIOptimization: (
     id: ID,
     type: 'experience' | 'project',
-    optimizedBullets: string[]
+    version: { content: string; jdScore?: number; highlights?: string[] }
   ) => void;
   discardAIOptimization: (id: ID, type: 'experience' | 'project') => void;
   // 推荐版本勾选（用于最终简历）
@@ -313,7 +313,7 @@ export const useResumeStore = create<ResumeState>()(
         })),
 
       // AI Optimization — 写入 optimizedVersion，不覆盖原始经历
-      applyAIOptimization: (id, type, optimizedBullets) =>
+      applyAIOptimization: (id, type, version) =>
         set((state) => {
           const now = new Date().toISOString();
           if (type === 'experience') {
@@ -322,14 +322,7 @@ export const useResumeStore = create<ResumeState>()(
                 ...state.profile,
                 experience: state.profile.experience.map((item) =>
                   item.id === id
-                    ? {
-                        ...item,
-                        optimizedVersion: {
-                          bullets: optimizedBullets,
-                          explanation: 'AI 按 JD 优化的推荐版本',
-                          applied: true,
-                        },
-                      }
+                    ? { ...item, optimizedVersion: version }
                     : item
                 ),
                 updatedAt: now,
@@ -341,14 +334,7 @@ export const useResumeStore = create<ResumeState>()(
               ...state.profile,
               projects: state.profile.projects.map((item) =>
                 item.id === id
-                  ? {
-                      ...item,
-                      optimizedVersion: {
-                        bullets: optimizedBullets,
-                        explanation: 'AI 按 JD 优化的推荐版本',
-                        applied: true,
-                      },
-                    }
+                  ? { ...item, optimizedVersion: version }
                   : item
               ),
               updatedAt: now,
