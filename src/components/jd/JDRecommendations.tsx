@@ -223,8 +223,8 @@ export function JDRecommendations({
                   </div>
                 </div>
 
-                {/* 勾选框 */}
-                {isOptimized && (
+                {/* 勾选框 — 所有可优化经历均可勾选 */}
+                {canOptimize && (
                   <button
                     onClick={() => onToggleSelect?.(assetId)}
                     className="shrink-0"

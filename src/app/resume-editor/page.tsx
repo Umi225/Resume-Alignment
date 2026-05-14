@@ -42,38 +42,51 @@ export default function ResumeEditorPage() {
     isValidTemplateId(activeTemplate) ? activeTemplate : 'standard-campus'
   );
 
-  // 合成预览用的 profile：已勾选推荐经历的 bullets 替换为 optimizedVersion.content 拆分后的数组
+  // 合成预览用的 profile：
+  // - 固定信息全部保留（basicInfo, education, skills, certifications, awards）
+  // - 动态经历只保留用户勾选的（experience, projects）
+  // - 勾选的动态经历优先使用 optimizedVersion.content，否则用原始 bullets
   const previewProfile = useMemo<ResumeProfile>(() => {
     return {
       ...profile,
-      experience: profile.experience.map((exp) =>
-        selectedOptimizedIds.includes(exp.id) && exp.optimizedVersion
-          ? {
+      experience: profile.experience
+        .filter((exp) => selectedOptimizedIds.includes(exp.id))
+        .map((exp) => {
+          if (exp.optimizedVersion) {
+            return {
               ...exp,
               bullets: exp.optimizedVersion.content
                 .split('\n')
                 .map((line) => line.replace(/^·\s*/, '').trim())
                 .filter(Boolean),
-            }
-          : exp
-      ),
-      projects: profile.projects.map((proj) =>
-        selectedOptimizedIds.includes(proj.id) && proj.optimizedVersion
-          ? {
+            };
+          }
+          return exp;
+        }),
+      projects: profile.projects
+        .filter((proj) => selectedOptimizedIds.includes(proj.id))
+        .map((proj) => {
+          if (proj.optimizedVersion) {
+            return {
               ...proj,
               bullets: proj.optimizedVersion.content
                 .split('\n')
                 .map((line) => line.replace(/^·\s*/, '').trim())
                 .filter(Boolean),
-            }
-          : proj
-      ),
+            };
+          }
+          return proj;
+        }),
     };
   }, [profile, selectedOptimizedIds]);
 
-  // 收集所有有推荐版本的经历
-  const optimizedExperiences = profile.experience.filter((e) => e.optimizedVersion);
-  const optimizedProjects = profile.projects.filter((p) => p.optimizedVersion);
+  // 右侧面板显示：已勾选的 + 有 optimizedVersion 的（作为 AI 推荐）
+  const selectableExperiences = profile.experience.filter(
+    (e) => selectedOptimizedIds.includes(e.id) || e.optimizedVersion
+  );
+  const selectableProjects = profile.projects.filter(
+    (p) => selectedOptimizedIds.includes(p.id) || p.optimizedVersion
+  );
 
   return (
     <>
@@ -182,7 +195,7 @@ export default function ResumeEditorPage() {
                 )}
               </div>
 
-              {optimizedExperiences.length === 0 && optimizedProjects.length === 0 && (
+              {selectableExperiences.length === 0 && selectableProjects.length === 0 && (
                 <div className="rounded-card border border-dashed border-zinc-200 bg-zinc-50 p-3 text-center">
                   <Wand2 className="mx-auto h-4 w-4 text-zinc-300" />
                   <p className="mt-1 text-micro text-zinc-500">暂无推荐版本</p>
@@ -193,7 +206,7 @@ export default function ResumeEditorPage() {
               )}
 
               <div className="space-y-2">
-                {optimizedExperiences.map((exp) => (
+                {selectableExperiences.map((exp) => (
                   <OptimizedItemRow
                     key={exp.id}
                     id={exp.id}
@@ -201,10 +214,11 @@ export default function ResumeEditorPage() {
                     subtitle={exp.role}
                     icon={Briefcase}
                     isSelected={selectedOptimizedIds.includes(exp.id)}
+                    hasOptimized={!!exp.optimizedVersion}
                     onToggle={() => toggleOptimizedSelection(exp.id)}
                   />
                 ))}
-                {optimizedProjects.map((proj) => (
+                {selectableProjects.map((proj) => (
                   <OptimizedItemRow
                     key={proj.id}
                     id={proj.id}
@@ -212,6 +226,7 @@ export default function ResumeEditorPage() {
                     subtitle={proj.role}
                     icon={Code2}
                     isSelected={selectedOptimizedIds.includes(proj.id)}
+                    hasOptimized={!!proj.optimizedVersion}
                     onToggle={() => toggleOptimizedSelection(proj.id)}
                   />
                 ))}
@@ -328,11 +343,11 @@ function QuickLink({
 }
 
 function OptimizedItemRow({
-  id,
   title,
   subtitle,
   icon: Icon,
   isSelected,
+  hasOptimized,
   onToggle,
 }: {
   id: string;
@@ -340,6 +355,7 @@ function OptimizedItemRow({
   subtitle: string;
   icon: React.ComponentType<{ className?: string }>;
   isSelected: boolean;
+  hasOptimized: boolean;
   onToggle: () => void;
 }) {
   return (
@@ -358,9 +374,23 @@ function OptimizedItemRow({
         <Square className="h-4 w-4 shrink-0 text-zinc-400" />
       )}
       <div className="min-w-0 flex-1">
-        <p className={cn('text-caption truncate', isSelected ? 'text-white' : 'text-zinc-900')}>
-          {title}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className={cn('text-caption truncate', isSelected ? 'text-white' : 'text-zinc-900')}>
+            {title}
+          </p>
+          {hasOptimized && (
+            <span
+              className={cn(
+                'shrink-0 rounded px-1 py-0 text-[10px] font-medium',
+                isSelected
+                  ? 'bg-white/20 text-white'
+                  : 'bg-blue-50 text-blue-600'
+              )}
+            >
+              AI推荐
+            </span>
+          )}
+        </div>
         <p className={cn('text-micro truncate', isSelected ? 'text-zinc-300' : 'text-zinc-500')}>
           {subtitle}
         </p>
