@@ -253,6 +253,9 @@ function CardContent({ item }: { item: ExperienceItem }) {
               ))}
             </div>
           )}
+          {item.description && (
+            <p className="text-small mt-1.5 text-zinc-500">{item.description}</p>
+          )}
         </>
       );
   }

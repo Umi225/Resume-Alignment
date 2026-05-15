@@ -671,9 +671,10 @@ function SkillForm({
   const { addSkill, updateSkill } = useResumeStore();
   const [data, setData] = useState<Partial<Skill>>({
     name: initial?.name || '',
-    category: initial?.category || '其他',
-    proficiency: initial?.proficiency || '熟悉',
-    level: initial?.level || 3,
+    category: initial?.category,
+    proficiency: initial?.proficiency,
+    level: initial?.level,
+    description: initial?.description || '',
   });
 
   const handleSave = () => {
@@ -693,15 +694,33 @@ function SkillForm({
       <TextField label="技能名称 *" value={data.name || ''} onChange={(v) => setData({ ...data, name: v })} />
       <SelectField
         label="分类"
-        value={data.category || '其他'}
-        options={['编程语言', '前端', '后端', '数据库', 'AI/ML', 'DevOps', '工具', '语言', '软技能', '其他']}
-        onChange={(v) => setData({ ...data, category: v as SkillCategory })}
+        value={data.category || ''}
+        options={[
+          { label: '请选择（可选）', value: '' },
+          { label: '编程语言', value: '编程语言' },
+          { label: '前端', value: '前端' },
+          { label: '后端', value: '后端' },
+          { label: '数据库', value: '数据库' },
+          { label: 'AI/ML', value: 'AI/ML' },
+          { label: 'DevOps', value: 'DevOps' },
+          { label: '工具', value: '工具' },
+          { label: '语言', value: '语言' },
+          { label: '软技能', value: '软技能' },
+          { label: '其他', value: '其他' },
+        ]}
+        onChange={(v) => setData({ ...data, category: v ? (v as SkillCategory) : undefined })}
       />
       <SelectField
         label="熟练度"
-        value={data.proficiency || '熟悉'}
-        options={['入门', '熟悉', '掌握', '精通']}
-        onChange={(v) => setData({ ...data, proficiency: v as ProficiencyLevel })}
+        value={data.proficiency || ''}
+        options={[
+          { label: '请选择（可选）', value: '' },
+          { label: '入门', value: '入门' },
+          { label: '熟悉', value: '熟悉' },
+          { label: '掌握', value: '掌握' },
+          { label: '精通', value: '精通' },
+        ]}
+        onChange={(v) => setData({ ...data, proficiency: v ? (v as ProficiencyLevel) : undefined })}
       />
       <div className="space-y-2"
       >
@@ -712,7 +731,7 @@ function SkillForm({
           {[1, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
-              onClick={() => setData({ ...data, level: n as 1 | 2 | 3 | 4 | 5 })}
+              onClick={() => setData({ ...data, level: data.level === n ? undefined : (n as 1 | 2 | 3 | 4 | 5) })}
               className={cn(
                 'h-8 w-8 rounded-lg text-sm font-medium transition-colors',
                 data.level === n
@@ -724,6 +743,16 @@ function SkillForm({
             </button>
           ))}
         </div>
+      </div>
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-zinc-700">补充说明（可选）</label>
+        <textarea
+          value={data.description || ''}
+          onChange={(e) => setData({ ...data, description: e.target.value })}
+          rows={3}
+          placeholder="如 IELTS 7.5、用于数据清洗与可视化等"
+          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900"
+        />
       </div>
       <SaveButton onClick={handleSave} disabled={!data.name} />
     </div>

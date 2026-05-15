@@ -265,6 +265,8 @@ export interface Skill {
   relatedExperienceIds?: ID[];
   /** 关联的项目 ID */
   relatedProjectIds?: ID[];
+  /** 补充说明，如 IELTS 7.5、用于数据清洗与可视化等 */
+  description?: string;
 }
 
 // ============================================
