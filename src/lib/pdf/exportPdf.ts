@@ -79,6 +79,13 @@ export async function exportResumeToPdf(
   // --- Stage 1: 准备 DOM ---
   onProgress?.('preparing', 0.1);
 
+  // 等待字体加载完成，避免预览和导出字体 fallback 不一致
+  if (document.fonts) {
+    await document.fonts.ready;
+  }
+
+  onProgress?.('preparing', 0.2);
+
   // 确保所有图片已加载（特别是头像）
   await preloadImages(element);
 
@@ -95,6 +102,8 @@ export async function exportResumeToPdf(
     logging: false,
     // 修复某些情况下文字渲染模糊
     imageTimeout: 15000,
+    // 确保截图时视口宽度与 DOM 宽度一致，避免布局漂移
+    windowWidth: element.scrollWidth,
     // 忽略外部滚动条等
     ignoreElements: (el) => el.tagName === 'SCRIPT' || el.tagName === 'NOSCRIPT',
   });
@@ -131,21 +140,15 @@ async function generateSinglePagePdf(canvas: HTMLCanvasElement): Promise<jsPDF> 
 
   const imgData = canvas.toDataURL('image/png');
 
-  // 计算图片的原始尺寸（毫米）
-  const pxPerMm = canvas.width / CONTENT_W;
-  const imgW_mm = canvas.width / pxPerMm;
-  const imgH_mm = canvas.height / pxPerMm;
+  // 基于实际 canvas 像素与 PDF 内容宽度的比例映射
+  // canvas.width 对应 CONTENT_W (210mm)，高度按比例
+  const mmPerPx = CONTENT_W / canvas.width;
+  const imgW_mm = CONTENT_W;
+  const imgH_mm = canvas.height * mmPerPx;
 
   // 单页模式：计算缩放比例
   let drawW = imgW_mm;
   let drawH = imgH_mm;
-
-  // 如果宽度超出，按宽度缩放
-  if (drawW > CONTENT_W) {
-    const ratio = CONTENT_W / drawW;
-    drawW = CONTENT_W;
-    drawH *= ratio;
-  }
 
   // 如果高度超出 A4，按高度缩放
   if (drawH > CONTENT_H) {
@@ -191,10 +194,11 @@ async function generateMultiPagePdf(canvas: HTMLCanvasElement): Promise<jsPDF> {
     compress: true,
   });
 
-  const pxPerMm = canvas.width / CONTENT_W;
+  // 基于实际 canvas 像素与 PDF 内容宽度的比例映射
+  const mmPerPx = CONTENT_W / canvas.width;
 
   const imgW_mm = CONTENT_W;
-  const imgH_mm = canvas.height / pxPerMm;
+  const imgH_mm = canvas.height * mmPerPx;
 
   // 如果内容高度 <= A4，直接单页
   if (imgH_mm <= CONTENT_H) {
@@ -204,7 +208,7 @@ async function generateMultiPagePdf(canvas: HTMLCanvasElement): Promise<jsPDF> {
   }
 
   // 需要分页：逐页裁剪 canvas
-  const pageHeightPx = CONTENT_H * pxPerMm;
+  const pageHeightPx = CONTENT_H / mmPerPx;
   const totalPages = Math.ceil(canvas.height / pageHeightPx);
 
   for (let page = 0; page < totalPages; page++) {
@@ -236,7 +240,7 @@ async function generateMultiPagePdf(canvas: HTMLCanvasElement): Promise<jsPDF> {
     );
 
     const pageImgData = pageCanvas.toDataURL('image/png');
-    const pageH_mm = sh / pxPerMm;
+    const pageH_mm = sh * mmPerPx;
 
     pdf.addImage(pageImgData, 'PNG', MARGIN, MARGIN, imgW_mm, pageH_mm);
   }
@@ -290,9 +294,10 @@ function preloadImages(container: HTMLElement): Promise<void> {
  */
 export function estimatePageCount(element: HTMLElement): number {
   const rect = element.getBoundingClientRect();
-  // A4 高度约 1123px (at 96 DPI)
-  const a4HeightPx = 1123;
-  return Math.max(1, Math.ceil(rect.height / a4HeightPx));
+  // 基于实际 DOM 宽度与 A4 宽度的比例，计算高度对应的毫米值
+  const mmPerPx = CONTENT_W / rect.width;
+  const heightMm = rect.height * mmPerPx;
+  return Math.max(1, Math.ceil(heightMm / A4_H));
 }
 
 /**
@@ -300,11 +305,12 @@ export function estimatePageCount(element: HTMLElement): number {
  */
 export function estimateSinglePageScale(element: HTMLElement): number {
   const rect = element.getBoundingClientRect();
-  const a4WidthPx = 793;
-  const a4HeightPx = 1123;
+  const mmPerPx = CONTENT_W / rect.width;
+  const widthMm = rect.width * mmPerPx;
+  const heightMm = rect.height * mmPerPx;
 
-  const widthScale = a4WidthPx / rect.width;
-  const heightScale = a4HeightPx / rect.height;
+  const widthScale = CONTENT_W / widthMm;
+  const heightScale = CONTENT_H / heightMm;
 
   return Math.min(widthScale, heightScale, 1);
 }

@@ -137,8 +137,19 @@ export default function ResumeEditorPage() {
 
             {/* 简历预览区 */}
             <div className="flex flex-1 justify-center py-8">
-              <div ref={resumeRef} className="shadow-floating">
-                <TemplateComponent profile={previewProfile} />
+              <div className="shadow-floating">
+                <div
+                  ref={resumeRef}
+                  style={{
+                    width: '210mm',
+                    minHeight: '297mm',
+                    padding: activeTemplate === 'minimal' ? '22mm 24mm' : '16mm 18mm',
+                    background: 'white',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <TemplateComponent profile={previewProfile} />
+                </div>
               </div>
             </div>
           </div>

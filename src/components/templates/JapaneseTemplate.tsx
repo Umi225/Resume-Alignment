@@ -191,15 +191,7 @@ export function JapaneseTemplate({ profile }: TemplateProps) {
   const sortedCertifications = sortByDateDesc(certifications);
 
   return (
-    <div
-      className="mx-auto bg-white text-gray-900"
-      style={{
-        width: '210mm',
-        minHeight: '297mm',
-        padding: '16mm 18mm',
-        boxShadow: '0 0 0 1px #e5e5e5',
-      }}
-    >
+    <div className="text-gray-900">
       {/* Header */}
       <header className="mb-4 border border-gray-800">
         <div className="border-b border-gray-800 bg-gray-50 px-3 py-1.5">

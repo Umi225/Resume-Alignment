@@ -110,15 +110,7 @@ export function MinimalTemplate({ profile }: TemplateProps) {
   const sortedCertifications = sortByDateDesc(certifications);
 
   return (
-    <div
-      className="mx-auto bg-white text-gray-900"
-      style={{
-        width: '210mm',
-        minHeight: '297mm',
-        padding: '22mm 24mm',
-        boxShadow: '0 0 0 1px #e5e5e5',
-      }}
-    >
+    <div className="text-gray-900">
       {/* Header - Centered */}
       <header className="mb-8 text-center">
         {basicInfo.avatar && (

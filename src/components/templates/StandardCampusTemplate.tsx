@@ -156,15 +156,7 @@ export function StandardCampusTemplate({ profile }: TemplateProps) {
   const sortedCertifications = sortByDateDesc(certifications);
 
   return (
-    <div
-      className="mx-auto bg-white text-gray-900"
-      style={{
-        width: '210mm',
-        minHeight: '297mm',
-        padding: '16mm 18mm',
-        boxShadow: '0 0 0 1px #e5e5e5',
-      }}
-    >
+    <div className="text-gray-900">
       {/* Header */}
       <header className="mb-4 flex items-start justify-between">
         <div className="flex-1">
