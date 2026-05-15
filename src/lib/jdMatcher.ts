@@ -595,6 +595,7 @@ function matchCertification(cert: Certification, keywords: ExtractedKeyword[]): 
   const fields: { key: string; text: string }[] = [
     { key: 'name', text: cert.name },
     { key: 'issuer', text: cert.issuer },
+    { key: 'description', text: (cert as { description?: string }).description || '' },
   ];
 
   let totalScore = 0;
@@ -635,6 +636,9 @@ function matchSkill(skill: Skill, keywords: ExtractedKeyword[]): AssetMatchResul
   const fields: { key: string; text: string }[] = [
     { key: 'name', text: skill.name },
     { key: 'category', text: skill.category || '' },
+    { key: 'proficiency', text: skill.proficiency || '' },
+    { key: 'description', text: skill.description || '' },
+    { key: 'level', text: skill.level ? String(skill.level) : '' },
   ];
 
   let totalScore = 0;
@@ -731,13 +735,20 @@ export interface FullMatchResult {
   matches: AssetMatchResult[];
 }
 
+const kindPriority: Record<AssetKind, number> = {
+  experience: 0,
+  project: 0,
+  skill: 1,
+  certification: 1,
+  award: 2,
+  education: 3,
+};
+
 export function matchProfileToJD(profile: ResumeProfile, jdText: string): FullMatchResult {
   const jdAnalysis = analyzeJD(jdText);
   const matches: AssetMatchResult[] = [];
 
-  for (const edu of profile.education) {
-    matches.push(matchEducation(edu, jdAnalysis.keywords));
-  }
+  // 教育背景不参与 JD 匹配
   for (const exp of profile.experience) {
     matches.push(matchExperience(exp, jdAnalysis.keywords));
   }
@@ -754,8 +765,11 @@ export function matchProfileToJD(profile: ResumeProfile, jdText: string): FullMa
     matches.push(matchSkill(skill, jdAnalysis.keywords));
   }
 
-  // 按分数降序排列
-  matches.sort((a, b) => b.score - a.score);
+  // 按分数降序排列，同分时按类型优先级
+  matches.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return kindPriority[a.kind] - kindPriority[b.kind];
+  });
 
   return { jdAnalysis, matches };
 }

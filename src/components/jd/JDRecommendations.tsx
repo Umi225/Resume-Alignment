@@ -93,8 +93,10 @@ function getAssetSubtitle(result: AssetMatchResult): string {
       return (result.asset as { level?: string }).level || '';
     case 'certification':
       return (result.asset as { issuer: string }).issuer;
-    case 'skill':
-      return (result.asset as { category?: string }).category || '';
+    case 'skill': {
+      const s = result.asset as { category?: string; proficiency?: string; description?: string };
+      return s.description || s.proficiency || s.category || '';
+    }
   }
 }
 
@@ -165,6 +167,7 @@ export function JDRecommendations({
           const isExpanded = expandedId === `${result.kind}-${assetId}`;
           const isOptimized = optimizedIds.includes(assetId);
           const isSelected = selectedIds.includes(assetId);
+          const canSelect = result.kind !== 'education';
           const canOptimize = result.kind === 'experience' || result.kind === 'project';
           const optimizedVersion =
             canOptimize
@@ -223,8 +226,8 @@ export function JDRecommendations({
                   </div>
                 </div>
 
-                {/* 勾选框 — 所有可优化经历均可勾选 */}
-                {canOptimize && (
+                {/* 勾选框 — 所有非教育类经历均可勾选 */}
+                {canSelect && (
                   <button
                     onClick={() => onToggleSelect?.(assetId)}
                     className="shrink-0"

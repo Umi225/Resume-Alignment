@@ -20,6 +20,9 @@ import {
   Square,
   Briefcase,
   Code2,
+  Award,
+  FileCheck,
+  Zap,
 } from 'lucide-react';
 import type { ResumeProfile } from '@/types/resume';
 
@@ -40,8 +43,8 @@ export default function ResumeEditorPage() {
   );
 
   // 合成预览用的 profile：
-  // - 固定信息全部保留（basicInfo, education, skills, certifications, awards）
-  // - 动态经历只保留用户勾选的（experience, projects）
+  // - 固定信息全部保留（basicInfo, education）
+  // - 动态内容只保留用户勾选的（experience, projects, skills, certifications, awards）
   // - 勾选的动态经历优先使用 optimizedVersion.content，否则用原始 bullets
   const previewProfile = useMemo<ResumeProfile>(() => {
     return {
@@ -74,6 +77,9 @@ export default function ResumeEditorPage() {
           }
           return proj;
         }),
+      skills: profile.skills.filter((s) => selectedOptimizedIds.includes(s.id)),
+      certifications: profile.certifications.filter((c) => selectedOptimizedIds.includes(c.id)),
+      awards: profile.awards.filter((a) => selectedOptimizedIds.includes(a.id)),
     };
   }, [profile, selectedOptimizedIds]);
 
@@ -84,6 +90,21 @@ export default function ResumeEditorPage() {
   const selectableProjects = profile.projects.filter(
     (p) => selectedOptimizedIds.includes(p.id) || p.optimizedVersion
   );
+  const selectableSkills = profile.skills.filter((s) =>
+    selectedOptimizedIds.includes(s.id)
+  );
+  const selectableCertifications = profile.certifications.filter((c) =>
+    selectedOptimizedIds.includes(c.id)
+  );
+  const selectableAwards = profile.awards.filter((a) =>
+    selectedOptimizedIds.includes(a.id)
+  );
+  const hasAnySelectable =
+    selectableExperiences.length > 0 ||
+    selectableProjects.length > 0 ||
+    selectableSkills.length > 0 ||
+    selectableCertifications.length > 0 ||
+    selectableAwards.length > 0;
 
   return (
     <>
@@ -140,7 +161,7 @@ export default function ResumeEditorPage() {
                 )}
               </div>
 
-              {selectableExperiences.length === 0 && selectableProjects.length === 0 && (
+              {!hasAnySelectable && (
                 <div className="rounded-card border border-dashed border-zinc-200 bg-zinc-50 p-3 text-center">
                   <Wand2 className="mx-auto h-4 w-4 text-zinc-300" />
                   <p className="mt-1 text-micro text-zinc-500">暂无推荐版本</p>
@@ -173,6 +194,42 @@ export default function ResumeEditorPage() {
                     isSelected={selectedOptimizedIds.includes(proj.id)}
                     hasOptimized={!!proj.optimizedVersion}
                     onToggle={() => toggleOptimizedSelection(proj.id)}
+                  />
+                ))}
+                {selectableSkills.map((skill) => (
+                  <OptimizedItemRow
+                    key={skill.id}
+                    id={skill.id}
+                    title={skill.name}
+                    subtitle={skill.description || skill.proficiency || skill.category || ''}
+                    icon={Zap}
+                    isSelected={selectedOptimizedIds.includes(skill.id)}
+                    hasOptimized={false}
+                    onToggle={() => toggleOptimizedSelection(skill.id)}
+                  />
+                ))}
+                {selectableCertifications.map((cert) => (
+                  <OptimizedItemRow
+                    key={cert.id}
+                    id={cert.id}
+                    title={cert.name}
+                    subtitle={cert.issuer}
+                    icon={FileCheck}
+                    isSelected={selectedOptimizedIds.includes(cert.id)}
+                    hasOptimized={false}
+                    onToggle={() => toggleOptimizedSelection(cert.id)}
+                  />
+                ))}
+                {selectableAwards.map((award) => (
+                  <OptimizedItemRow
+                    key={award.id}
+                    id={award.id}
+                    title={award.name}
+                    subtitle={award.level || ''}
+                    icon={Award}
+                    isSelected={selectedOptimizedIds.includes(award.id)}
+                    hasOptimized={false}
+                    onToggle={() => toggleOptimizedSelection(award.id)}
                   />
                 ))}
               </div>

@@ -632,6 +632,7 @@ function CertificationForm({
     date: initial?.date || '',
     expiryDate: initial?.expiryDate || '',
     credentialId: initial?.credentialId || '',
+    description: initial?.description || '',
   });
 
   const handleSave = () => {
@@ -656,6 +657,16 @@ function CertificationForm({
         <TextField label="过期时间" value={data.expiryDate || ''} onChange={(v) => setData({ ...data, expiryDate: v })} placeholder="YYYY-MM 或留空" />
       </div>
       <TextField label="证书编号" value={data.credentialId || ''} onChange={(v) => setData({ ...data, credentialId: v })} />
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-zinc-700">补充说明（可选）</label>
+        <textarea
+          value={data.description || ''}
+          onChange={(e) => setData({ ...data, description: e.target.value })}
+          rows={3}
+          placeholder="如证书等级、有效期说明等"
+          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900"
+        />
+      </div>
       <SaveButton onClick={handleSave} disabled={!data.name || !data.issuer || !data.date} />
     </div>
   );

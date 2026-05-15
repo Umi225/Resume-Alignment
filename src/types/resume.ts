@@ -245,6 +245,8 @@ export interface Certification {
   expiryDate?: DateString;
   /** 证书编号 */
   credentialId?: string;
+  /** 补充说明 */
+  description?: string;
 }
 
 /**
