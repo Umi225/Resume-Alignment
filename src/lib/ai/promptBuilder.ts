@@ -89,6 +89,7 @@ const CORE_CONSTRAINTS = `
 4. **数据溯源**：所有数字必须基于原文。原文没有数字时，只能标记【待补充】，严禁编造百分比、人数、金额。
 5. **时间锁定**：不得修改任职时间、项目周期。
 6. **技能锁定**：不得添加用户未提及的技术栈、工具、语言。
+7. **输出锁定**：必须只返回合法 JSON，不允许 markdown，不允许解释，不允许输出 JSON 以外的任何文本。
 `.trim();
 
 /**
@@ -120,9 +121,16 @@ const METHODOLOGY = `
  * 输出格式规范
  */
 const OUTPUT_FORMAT = `
-## 输出格式（必须严格遵循）
+## 输出格式（必须严格遵循——任何偏离都将导致输出被拒绝）
 
-你的回复必须是一个合法的 JSON 对象，不要包含 markdown 代码块标记，直接输出纯 JSON：
+**致命约束**：
+1. 必须只输出合法 JSON，不要包含 markdown 代码块标记（如 \`\`\`json）。
+2. 不允许输出任何解释、说明、评论、前言或后记。
+3. 不允许输出 JSON 以外的任何文本。
+4. 每条 optimized 必须是完整、自然、可直接放进中文简历的句子。
+5. 不要拼接多个不相关的片段，不要混合英文翻译，不要包含 HTML 标签。
+
+你的回复必须且只能是一个合法的 JSON 对象：
 
 {
   "rewrittenBullets": [
@@ -175,6 +183,12 @@ const OUTPUT_FORMAT = `
 - **verified**：纯表达优化，事实完全来自原文，用户可直接采用
 - **pending_supplement**：原文缺少量化，已给出建议，需用户填写
 - **pending_confirm**：基于合理推断（如从"参与"推断具体角色），需用户确认
+
+### optimized 字段质量要求
+- 必须是完整、通顺、可直接放进中文简历的句子。
+- 禁止输出 JSON 标记、markdown 符号、HTML 标签、代码块。
+- 禁止拼接多个不相关片段或混合多语言内容（岗位术语除外）。
+- 禁止以 { 或 [ 开头（那不是简历句子，那是 JSON 泄漏）。
 `.trim();
 
 function buildSystemPrompt(roleStyle: RoleStyle): string {
@@ -272,8 +286,10 @@ function buildUserPrompt(ctx: PromptContext): string {
   parts.push(
     '',
     '---',
-    '请直接输出 JSON，不要包含 markdown 代码块标记（如 ```json）。',
-    '确保 rewrittenBullets 数组中的顺序和数量与原文描述要点一一对应。'
+    '【致命约束】你只能输出纯 JSON。任何非 JSON 内容（包括解释、markdown、代码块）都会导致解析失败。',
+    '不要输出 ```json 标记，不要输出 "以下是优化结果" 等前言，直接输出 JSON 对象本身。',
+    '确保 rewrittenBullets 数组中的顺序和数量与原文描述要点一一对应。',
+    '每条 optimized 字段必须是完整、自然、可直接放进中文简历的句子，禁止拼接碎片或混合多语言。'
   );
 
   return parts.join('\n');

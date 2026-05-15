@@ -99,6 +99,11 @@ export async function POST(req: NextRequest) {
 
     const rawContent = AIClient.extractContent(response);
 
+    // 开发环境：打印原始 AI 响应以便诊断格式问题
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[AI Raw Response]', rawContent);
+    }
+
     if (!rawContent) {
       return NextResponse.json(
         { success: false, error: 'AI 返回内容为空' } satisfies RewriteAPIResponse,
@@ -108,6 +113,10 @@ export async function POST(req: NextRequest) {
 
     // ====== 6. 解析响应 ======
     const parseResult = parseAIResponse(rawContent, originalBullets);
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[PARSED RESULT]', JSON.stringify(parseResult, null, 2));
+    }
 
     if (!parseResult.success || !parseResult.result) {
       return NextResponse.json(
@@ -120,10 +129,13 @@ export async function POST(req: NextRequest) {
     }
 
     // ====== 7. 返回结果 ======
-    return NextResponse.json(
-      { success: true, result: parseResult.result, meta: { mode: 'live' } } satisfies RewriteAPIResponse,
-      { status: 200 }
-    );
+    const responsePayload = { success: true, result: parseResult.result, meta: { mode: 'live' } } satisfies RewriteAPIResponse;
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[API RESPONSE]', JSON.stringify(responsePayload, null, 2));
+    }
+
+    return NextResponse.json(responsePayload, { status: 200 });
   } catch (error) {
     console.error('AI Rewrite API Error:', error);
 

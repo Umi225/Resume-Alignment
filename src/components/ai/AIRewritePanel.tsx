@@ -18,7 +18,7 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { DiffView } from './DiffView';
 import { RiskPanel } from './RiskWarnings';
@@ -51,6 +51,22 @@ interface AIRewritePanelProps {
   jobDescription?: string;
   onClose: () => void;
   onApply: (optimizedBullets: string[]) => void;
+}
+
+/**
+ * 检查字符串是否为完整的 JSON 对象/数组（用于检测 JSON 泄漏）
+ * 允许 {待补充} 这类占位符通过（不是有效 JSON）
+ */
+function looksLikeJSON(str: string): boolean {
+  const hasJsonStart = /^\s*[\{\[]/.test(str);
+  const hasJsonEnd = /[}\]]\s*$/.test(str);
+  if (!hasJsonStart || !hasJsonEnd) return false;
+  try {
+    JSON.parse(str);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ============================================
@@ -108,9 +124,16 @@ export function AIRewritePanel({
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'diff' | 'risks' | 'original'>('diff');
   const [isMock, setIsMock] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleOptimize = useCallback(async () => {
     if (!target || !targetType) return;
+
+    // 取消之前的未完成请求，防止旧响应覆盖新结果
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
 
     setLoading(true);
     setError(null);
@@ -120,6 +143,7 @@ export function AIRewritePanel({
       const res = await fetch('/api/rewrite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: abortControllerRef.current.signal,
         body: JSON.stringify({
           target,
           targetType,
@@ -131,6 +155,10 @@ export function AIRewritePanel({
 
       const data = await res.json();
 
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[FRONTEND RECEIVED]', JSON.stringify(data, null, 2));
+      }
+
       if (!res.ok || !data.success) {
         throw new Error(data.error || '请求失败');
       }
@@ -139,6 +167,10 @@ export function AIRewritePanel({
       setIsMock(data.meta?.mode === 'mock');
       setActiveTab('diff');
     } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') {
+        // 用户主动取消或发起新请求，静默忽略
+        return;
+      }
       setError(e instanceof Error ? e.message : '未知错误');
     } finally {
       setLoading(false);
@@ -153,6 +185,7 @@ export function AIRewritePanel({
   }, [result, onApply, onClose]);
 
   const handleDiscard = useCallback(() => {
+    abortControllerRef.current?.abort();
     setResult(null);
     setError(null);
     onClose();
@@ -176,6 +209,18 @@ export function AIRewritePanel({
     (result?.missingMetrics.length ?? 0) > 0 ||
     (result?.warnings.length ?? 0) > 0 ||
     (result?.rewrittenBullets.some((b) => b.confidence !== 'verified') ?? false);
+
+  // 前端保护：校验 AI 结果是否真正可用
+  const isResultValid =
+    result !== null &&
+    result.rewrittenBullets.length > 0 &&
+    result.rewrittenBullets.every(
+      (b) =>
+        typeof b.optimized === 'string' &&
+        b.optimized.trim().length > 0 &&
+        !b.optimized.includes('```') &&
+        !looksLikeJSON(b.optimized)
+    );
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/30">
@@ -215,7 +260,7 @@ export function AIRewritePanel({
 
           {loading && <LoadingView />}
 
-          {result && !loading && (
+          {result && !loading && isResultValid && (
             <ResultView
               result={result}
               activeTab={activeTab}
@@ -225,10 +270,14 @@ export function AIRewritePanel({
               isMock={isMock}
             />
           )}
+
+          {result && !loading && !isResultValid && (
+            <InvalidResultView onRetry={handleReset} />
+          )}
         </div>
 
         {/* ====== Footer ====== */}
-        {result && !loading && (
+        {result && !loading && isResultValid && (
           <div className="border-t border-zinc-200 bg-zinc-50 px-6 py-4">
             {hasFabrication && (
               <div className="mb-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5">
@@ -407,6 +456,33 @@ function LoadingView() {
           )
         )}
       </div>
+    </div>
+  );
+}
+
+// ============================================
+// 无效结果视图（AI 输出异常）
+// ============================================
+
+function InvalidResultView({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center px-6 py-20">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+        <ShieldAlert className="h-6 w-6 text-red-500" />
+      </div>
+      <p className="mt-4 text-sm font-medium text-red-700">
+        AI 输出格式异常，请重新优化
+      </p>
+      <p className="mt-1 text-center text-xs text-red-500">
+        优化结果无法解析或包含非法内容，建议切换模式后重试
+      </p>
+      <button
+        onClick={onRetry}
+        className="mt-5 flex items-center gap-1.5 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800"
+      >
+        <RotateCcw className="h-4 w-4" />
+        重新优化
+      </button>
     </div>
   );
 }

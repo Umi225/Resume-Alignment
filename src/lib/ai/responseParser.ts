@@ -174,15 +174,15 @@ export function parseAIResponse(rawText: string, originalBullets: string[]): Par
     if (!extracted) {
       return {
         success: false,
-        error: `AI 返回格式异常，无法解析为 JSON: ${e instanceof Error ? e.message : String(e)}`,
+        error: 'AI 输出格式异常，请重新优化',
       };
     }
     try {
       parsed = JSON.parse(extracted);
-    } catch (e2) {
+    } catch {
       return {
         success: false,
-        error: `AI 返回内容无法解析: ${e2 instanceof Error ? e2.message : String(e2)}`,
+        error: 'AI 输出格式异常，请重新优化',
       };
     }
   }
@@ -193,28 +193,81 @@ export function parseAIResponse(rawText: string, originalBullets: string[]): Par
   // Step 4: 结构化为 RewriteResult
   const result = normalizeResult(parsed, originalBullets, fabricationDetected);
 
+  // Step 5: 严格验证结果质量（不通过则拒绝，不降级）
+  const validation = validateResult(result, originalBullets);
+  if (!validation.valid) {
+    return {
+      success: false,
+      error: validation.error || 'AI 输出格式异常，请重新优化',
+    };
+  }
+
   return { success: true, result };
 }
 
 /**
  * 清洗原始响应文本
+ * 优先提取 markdown 代码块内的内容，避免前后说明文字污染 JSON
  */
 function cleanRawResponse(raw: string): string {
+  // 尝试提取 ```json ... ``` 或 ``` ... ``` 代码块内的内容
+  const codeBlockMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (codeBlockMatch) {
+    return codeBlockMatch[1].trim();
+  }
+  // Fallback：逐行清理标记
   return raw
     .replace(/```json\s*/gi, '')
-    .replace(/```\s*$/g, '')
+    .replace(/```/g, '')
     .replace(/^\s*json\s*/i, '')
     .trim();
 }
 
 /**
- * 从文本中提取 JSON 子串
+ * 从文本中提取第一个完整的顶层 JSON 对象
+ * 使用括号深度追踪，避免匹配到字符串值内部的 { 或 }
  */
 function extractJSON(text: string): string | null {
-  const start = text.indexOf('{');
-  const end = text.lastIndexOf('}');
-  if (start === -1 || end === -1 || end <= start) return null;
-  return text.slice(start, end + 1);
+  let depth = 0;
+  let start = -1;
+  let inString = false;
+  let escapeNext = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+
+    if (inString) {
+      if (escapeNext) {
+        escapeNext = false;
+        continue;
+      }
+      if (ch === '\\') {
+        escapeNext = true;
+        continue;
+      }
+      if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (ch === '{') {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (ch === '}') {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -307,6 +360,76 @@ function normalizeResult(
       ? '检测到 AI 输出可能存在编造内容，已标记所有项为待确认。请仔细核对每一条修改。'
       : safeString(obj.summary),
   };
+}
+
+// ============================================
+// 结果质量验证（拒绝垃圾输出，不降级）
+// ============================================
+
+function validateResult(
+  result: RewriteResult,
+  originalBullets: string[]
+): { valid: boolean; error?: string } {
+  // 1. bullet 数量必须匹配
+  if (result.rewrittenBullets.length !== originalBullets.length) {
+    return {
+      valid: false,
+      error: `AI 输出格式异常：bullet 数量不匹配（期望 ${originalBullets.length} 条，实际 ${result.rewrittenBullets.length} 条）`,
+    };
+  }
+
+  // 2. 每条 optimized 必须是非空、合理的字符串
+  for (let i = 0; i < result.rewrittenBullets.length; i++) {
+    const b = result.rewrittenBullets[i];
+    const opt = b.optimized?.trim() || '';
+
+    if (!opt) {
+      return {
+        valid: false,
+        error: `AI 输出格式异常：第 ${i + 1} 条优化结果为空`,
+      };
+    }
+
+    // 检测到 JSON / markdown 泄漏
+    if (opt.includes('```') || opt.includes('```json')) {
+      return {
+        valid: false,
+        error: `AI 输出格式异常：第 ${i + 1} 条包含 markdown 代码块标记`,
+      };
+    }
+
+    // 检测到 JSON 对象/数组泄漏（整条 optimized 就是一个可解析的 JSON 结构）
+    if (/^\s*[\{\[]/.test(opt) && /[\}\]]\s*$/.test(opt)) {
+      try {
+        JSON.parse(opt);
+        return {
+          valid: false,
+          error: `AI 输出格式异常：第 ${i + 1} 条整体为 JSON 结构，不是自然语言`,
+        };
+      } catch {
+        // 不是有效 JSON（如 {待补充} 占位符），允许通过
+      }
+    }
+
+    // 检测到嵌套 JSON 字段名泄漏
+    if (opt.includes('"original":') || opt.includes('"optimized":') || opt.includes('"rewrittenBullets":')) {
+      return {
+        valid: false,
+        error: `AI 输出格式异常：第 ${i + 1} 条包含 JSON 字段名泄漏`,
+      };
+    }
+
+    // 检测到混乱拼接：同时包含多个 JSON 字段名和代码块标记
+    const jsonFieldLeakCount = (opt.match(/"[a-zA-Z_]+":/g) || []).length;
+    if (opt.length > 500 && jsonFieldLeakCount >= 3 && opt.includes('}') && opt.includes('{')) {
+      return {
+        valid: false,
+        error: `AI 输出格式异常：第 ${i + 1} 条疑似拼接文本`,
+      };
+    }
+  }
+
+  return { valid: true };
 }
 
 // ============================================
