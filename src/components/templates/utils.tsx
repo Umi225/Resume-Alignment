@@ -32,10 +32,10 @@ export function getAvatarSrc(avatar?: string): string | undefined {
   return avatar;
 }
 
-export function groupSkillsByCategory(skills: Skill[]): Map<string, Skill[]> {
-  const map = new Map<string, Skill[]>();
+export function groupSkillsByCategory(skills: Skill[]): Map<string | undefined, Skill[]> {
+  const map = new Map<string | undefined, Skill[]>();
   for (const skill of skills) {
-    const cat = skill.category || '其他';
+    const cat = skill.category || undefined;
     if (!map.has(cat)) map.set(cat, []);
     map.get(cat)!.push(skill);
   }

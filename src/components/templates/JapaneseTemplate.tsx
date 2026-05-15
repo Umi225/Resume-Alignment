@@ -165,10 +165,15 @@ function SkillsTable({ skills }: { skills: Skill[] }) {
   return (
     <div className="space-y-1">
       {Array.from(groups.entries()).map(([cat, items]) => (
-        <div key={cat} className="flex items-baseline gap-2">
-          <span className="w-20 shrink-0 text-xs font-medium text-gray-700">{cat}</span>
+        <div key={cat ?? 'uncategorized'} className="flex items-baseline gap-2">
+          {cat && <span className="w-20 shrink-0 text-xs font-medium text-gray-700">{cat}</span>}
           <span className="text-xs text-gray-900">
-            {items.map((s) => `${s.name}${s.proficiency ? `（${s.proficiency}）` : ''}`).join('、')}
+            {items.map((s) => {
+              let text = s.name;
+              if (s.description) text += ` ${s.description}`;
+              if (s.proficiency) text += `（${s.proficiency}）`;
+              return text;
+            }).join('、')}
           </span>
         </div>
       ))}

@@ -84,9 +84,16 @@ function SkillsSection({ skills }: { skills: Skill[] }) {
   return (
     <div className="space-y-2">
       {Array.from(groups.entries()).map(([cat, items]) => (
-        <div key={cat} className="flex items-baseline gap-3">
-          <span className="w-16 shrink-0 text-xs text-gray-400">{cat}</span>
-          <span className="text-xs text-gray-600">{items.map((s) => s.name).join(' · ')}</span>
+        <div key={cat ?? 'uncategorized'} className="flex items-baseline gap-3">
+          {cat && <span className="w-16 shrink-0 text-xs text-gray-400">{cat}</span>}
+          <span className="text-xs text-gray-600">
+            {items.map((s) => {
+              let text = s.name;
+              if (s.description) text += ` ${s.description}`;
+              if (s.proficiency) text += ` (${s.proficiency})`;
+              return text;
+            }).join(' · ')}
+          </span>
         </div>
       ))}
     </div>
