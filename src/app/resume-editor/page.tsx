@@ -18,17 +18,14 @@ import {
   Wand2,
   CheckSquare,
   Square,
-  User,
   Briefcase,
   Code2,
-  X,
 } from 'lucide-react';
-import type { ResumeProfile, Experience, Project } from '@/types/resume';
+import type { ResumeProfile } from '@/types/resume';
 
 export default function ResumeEditorPage() {
   const {
     profile,
-    updateBasicInfo,
     selectedOptimizedIds,
     toggleOptimizedSelection,
     clearOptimizedSelection,
@@ -127,58 +124,6 @@ export default function ResumeEditorPage() {
 
           {/* 右侧：辅助栏 */}
           <aside className="flex w-[260px] flex-shrink-0 flex-col border-l border-zinc-200 bg-white">
-            {/* 基础信息编辑 */}
-            <div className="border-b border-zinc-100 px-5 py-4">
-              <h3 className="mb-3 text-micro font-semibold uppercase tracking-wider text-zinc-400">
-                基础信息（固定资料）
-              </h3>
-              <div className="space-y-2.5">
-                <Field
-                  label="姓名"
-                  value={profile.basicInfo.name}
-                  onChange={(v) => updateBasicInfo({ name: v })}
-                />
-                <Field
-                  label="电话"
-                  value={profile.basicInfo.phone}
-                  onChange={(v) => updateBasicInfo({ phone: v })}
-                />
-                <Field
-                  label="邮箱"
-                  value={profile.basicInfo.email}
-                  onChange={(v) => updateBasicInfo({ email: v })}
-                />
-                <Field
-                  label="所在地"
-                  value={profile.basicInfo.location || ''}
-                  onChange={(v) => updateBasicInfo({ location: v })}
-                />
-                <Field
-                  label="GitHub"
-                  value={profile.basicInfo.github || ''}
-                  onChange={(v) => updateBasicInfo({ github: v })}
-                />
-                <Field
-                  label="个人主页"
-                  value={profile.basicInfo.website || ''}
-                  onChange={(v) => updateBasicInfo({ website: v })}
-                />
-                <div>
-                  <label className="mb-1 block text-micro text-zinc-400">
-                    个人总结
-                  </label>
-                  <textarea
-                    value={profile.basicInfo.summary || ''}
-                    onChange={(e) =>
-                      updateBasicInfo({ summary: e.target.value })
-                    }
-                    rows={3}
-                    className="w-full resize-none rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-caption text-zinc-900 outline-none transition-colors focus:border-zinc-400"
-                  />
-                </div>
-              </div>
-            </div>
-
             {/* 推荐经历区域 */}
             <div className="border-b border-zinc-100 px-5 py-4">
               <div className="flex items-center justify-between mb-3">
@@ -294,28 +239,6 @@ export default function ResumeEditorPage() {
         onClose={() => setExportModalOpen(false)}
       />
     </>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div>
-      <label className="mb-1 block text-micro text-zinc-400">{label}</label>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-caption text-zinc-900 outline-none transition-colors focus:border-zinc-400"
-      />
-    </div>
   );
 }
 
