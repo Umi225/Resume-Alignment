@@ -65,9 +65,10 @@ export async function POST(req: NextRequest) {
 
     // ====== 3. 开发模式：无 API Key 返回模拟数据 ======
     if (providerConfig.devMode) {
+      console.warn('[AI] Running in MOCK mode because AI_API_KEY is missing.');
       const mockResult = generateMockResult(originalBullets, body.mode);
       return NextResponse.json(
-        { success: true, result: mockResult } satisfies RewriteAPIResponse,
+        { success: true, result: mockResult, meta: { mode: 'mock' } } satisfies RewriteAPIResponse,
         { status: 200 }
       );
     }
@@ -120,7 +121,7 @@ export async function POST(req: NextRequest) {
 
     // ====== 7. 返回结果 ======
     return NextResponse.json(
-      { success: true, result: parseResult.result } satisfies RewriteAPIResponse,
+      { success: true, result: parseResult.result, meta: { mode: 'live' } } satisfies RewriteAPIResponse,
       { status: 200 }
     );
   } catch (error) {

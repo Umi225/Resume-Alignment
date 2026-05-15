@@ -192,4 +192,7 @@ export interface RewriteAPIResponse {
   success: boolean;
   result?: RewriteResult;
   error?: string;
+  meta?: {
+    mode: 'mock' | 'live';
+  };
 }

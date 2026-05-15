@@ -107,6 +107,7 @@ export function AIRewritePanel({
   const [result, setResult] = useState<RewriteResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'diff' | 'risks' | 'original'>('diff');
+  const [isMock, setIsMock] = useState(false);
 
   const handleOptimize = useCallback(async () => {
     if (!target || !targetType) return;
@@ -135,6 +136,7 @@ export function AIRewritePanel({
       }
 
       setResult(data.result);
+      setIsMock(data.meta?.mode === 'mock');
       setActiveTab('diff');
     } catch (e) {
       setError(e instanceof Error ? e.message : '未知错误');
@@ -159,6 +161,7 @@ export function AIRewritePanel({
   const handleReset = useCallback(() => {
     setResult(null);
     setError(null);
+    setIsMock(false);
   }, []);
 
   if (!isOpen) return null;
@@ -219,6 +222,7 @@ export function AIRewritePanel({
               onTabChange={setActiveTab}
               hasFabrication={hasFabrication}
               hasPendingItems={hasPendingItems}
+              isMock={isMock}
             />
           )}
         </div>
@@ -417,12 +421,14 @@ function ResultView({
   onTabChange,
   hasFabrication,
   hasPendingItems,
+  isMock,
 }: {
   result: RewriteResult;
   activeTab: 'diff' | 'risks' | 'original';
   onTabChange: (t: 'diff' | 'risks' | 'original') => void;
   hasFabrication: boolean;
   hasPendingItems: boolean;
+  isMock: boolean;
 }) {
   const tabConfig = [
     { key: 'diff' as const, label: '优化结果', icon: Sparkles },
@@ -440,6 +446,16 @@ function ResultView({
 
   return (
     <div className="flex h-full flex-col">
+      {/* Mock Warning */}
+      {isMock && (
+        <div className="flex items-center gap-1.5 border-b border-amber-200 bg-amber-50 px-6 py-2">
+          <AlertTriangle className="h-3 w-3 flex-shrink-0 text-amber-500" />
+          <span className="text-[11px] font-medium text-amber-700">
+            Mock AI Response（未连接真实模型）
+          </span>
+        </div>
+      )}
+
       {/* Summary Banner */}
       <div className="border-b border-zinc-200 bg-zinc-50 px-6 py-3">
         <p className="text-xs leading-relaxed text-zinc-600">{result.summary}</p>
