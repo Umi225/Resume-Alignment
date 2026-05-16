@@ -23,6 +23,11 @@ function EducationItem({ edu }: { edu: Education }) {
         {edu.gpa && ` · GPA ${edu.gpa}`}
         {edu.ranking && ` · ${edu.ranking}`}
       </p>
+      {edu.relatedCourses && edu.relatedCourses.length > 0 && (
+        <p className="mt-0.5 text-xs text-gray-400">
+          {edu.relatedCourses.join(' · ')}
+        </p>
+      )}
     </div>
   );
 }

@@ -582,7 +582,7 @@ const FIELD_WEIGHTS: Record<AssetKind, Record<string, number>> = {
     major: 2.0,
     degree: 1.0,
     location: 0.5,
-    courses: 1.0,
+    relatedCourses: 1.0,
   },
   experience: {
     company: 1.5,
@@ -658,7 +658,7 @@ function matchEducation(edu: Education, keywords: ExtractedKeyword[]): AssetMatc
     { key: 'major', text: edu.major },
     { key: 'degree', text: edu.degree },
     { key: 'location', text: edu.location || '' },
-    { key: 'courses', text: (edu.courses || []).join(' ') },
+    { key: 'relatedCourses', text: (edu.relatedCourses || []).join(' ') },
   ];
 
   let totalScore = 0;

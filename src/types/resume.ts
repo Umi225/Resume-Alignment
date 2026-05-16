@@ -139,7 +139,7 @@ export interface Education {
   /** 学校所在地 */
   location?: string;
   /** 相关课程，校招简历常用 */
-  courses?: string[];
+  relatedCourses?: string[];
 }
 
 /**

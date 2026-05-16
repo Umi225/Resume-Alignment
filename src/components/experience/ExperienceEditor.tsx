@@ -284,7 +284,11 @@ function EducationForm({
     startDate: initial?.startDate || '',
     endDate: initial?.endDate || '',
     location: initial?.location || '',
-    courses: initial?.courses ? [...initial.courses] : [],
+    relatedCourses: initial?.relatedCourses
+      ? [...initial.relatedCourses]
+      : (initial as { courses?: string[] } | undefined)?.courses
+        ? [...((initial as { courses?: string[] }).courses!)]
+        : [],
   });
 
   const handleSave = () => {
@@ -322,8 +326,8 @@ function EducationForm({
       <TextField label="所在地" value={data.location || ''} onChange={(v) => setData({ ...data, location: v })} />
       <TagInput
         label="相关课程"
-        tags={data.courses || []}
-        onChange={(tags) => setData({ ...data, courses: tags })}
+        tags={data.relatedCourses || []}
+        onChange={(tags) => setData({ ...data, relatedCourses: tags })}
         placeholder="输入课程名按回车"
       />
       <SaveButton onClick={handleSave} disabled={!data.school || !data.major || !data.startDate} />
@@ -807,13 +811,19 @@ function TagInput({
 }) {
   const [input, setInput] = useState('');
 
+  const commitInput = () => {
+    const value = input.trim();
+    if (!value) return;
+    if (!tags.includes(value)) {
+      onChange([...tags, value]);
+    }
+    setInput('');
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && input.trim()) {
+    if (e.key === 'Enter') {
       e.preventDefault();
-      if (!tags.includes(input.trim())) {
-        onChange([...tags, input.trim()]);
-      }
-      setInput('');
+      commitInput();
     }
   };
 
@@ -842,6 +852,7 @@ function TagInput({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
+          onBlur={commitInput}
           placeholder={tags.length === 0 ? placeholder : ''}
           className="min-w-[80px] flex-1 bg-transparent text-sm text-zinc-900 outline-none placeholder:text-zinc-400"
         />

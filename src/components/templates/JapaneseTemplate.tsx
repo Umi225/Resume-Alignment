@@ -43,6 +43,7 @@ function EducationTable({ education }: { education: Education[] }) {
           <th className="px-2 py-1 text-left font-medium text-gray-700">学校名</th>
           <th className="px-2 py-1 text-left font-medium text-gray-700">学部・学科</th>
           <th className="px-2 py-1 text-left font-medium text-gray-700">学位</th>
+          <th className="px-2 py-1 text-left font-medium text-gray-700">主修课程</th>
         </tr>
       </thead>
       <tbody>
@@ -52,6 +53,7 @@ function EducationTable({ education }: { education: Education[] }) {
             <td className="px-2 py-1.5 font-medium text-gray-900">{edu.school}</td>
             <td className="px-2 py-1.5 text-gray-700">{edu.major}</td>
             <td className="px-2 py-1.5 text-gray-700">{edu.degree}</td>
+            <td className="px-2 py-1.5 text-gray-700">{(edu.relatedCourses || []).join('、')}</td>
           </tr>
         ))}
       </tbody>

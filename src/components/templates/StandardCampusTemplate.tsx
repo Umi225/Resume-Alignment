@@ -25,9 +25,9 @@ function EducationItem({ edu }: { edu: Education }) {
         {edu.ranking && <span>排名: {edu.ranking}</span>}
         {edu.location && <span>{edu.location}</span>}
       </div>
-      {edu.courses && edu.courses.length > 0 && (
+      {edu.relatedCourses && edu.relatedCourses.length > 0 && (
         <p className="mt-0.5 text-xs text-gray-400">
-          主修课程: {edu.courses.join('、')}
+          主修课程: {edu.relatedCourses.join('、')}
         </p>
       )}
     </div>
