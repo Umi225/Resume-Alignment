@@ -5,22 +5,20 @@
  *
  * 职责：右侧 AI 优化面板
  *
- * 包含：
- * - 原文展示
- * - AI 优化结果（Diff 高亮）
- * - 修改说明
- * - 待补充建议
- * - 应用 / 放弃按钮
+ * 单页编辑工作区：
+ * - 审核摘要
+ * - 可编辑优化结果
+ * - 集中提示区
+ * - 原始经历折叠
+ * - 应用 / 重新检查
  *
  * 核心原则：用户始终拥有最终控制权
  */
 
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { DiffView } from './DiffView';
-import { RiskPanel } from './RiskWarnings';
 import type {
   RewriteResult,
   OptimizationMode,
@@ -37,6 +35,8 @@ import {
   FileText,
   Lightbulb,
   ShieldAlert,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 // ============================================
@@ -57,7 +57,6 @@ interface AIRewritePanelProps {
  * 允许 {待补充} 这类占位符通过（不是有效 JSON）
  */
 function looksLikeJSON(str: string): boolean {
-  // 只检测明显的 AI 输出字段名泄漏，不拦截普通 JSON 占位符如 {"待补充":"指标"}
   const leakPatterns = [
     '"rewrittenBullets"',
     '"original"',
@@ -68,10 +67,6 @@ function looksLikeJSON(str: string): boolean {
   ];
   return leakPatterns.some((p) => str.includes(p));
 }
-
-// ============================================
-// 优化模式配置
-// ============================================
 
 const DEFAULT_MODE: OptimizationMode = 'full';
 
@@ -92,14 +87,21 @@ export function AIRewritePanel({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RewriteResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'diff' | 'risks' | 'original'>('diff');
   const [isMock, setIsMock] = useState(false);
+  const [editedBullets, setEditedBullets] = useState<string[]>([]);
+  const [rechecking, setRechecking] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // 当 result 首次可用时，初始化可编辑文本
+  useEffect(() => {
+    if (result) {
+      setEditedBullets(result.rewrittenBullets.map((b) => b.optimized));
+    }
+  }, [result]);
 
   const handleOptimize = useCallback(async () => {
     if (!target || !targetType) return;
 
-    // 取消之前的未完成请求，防止旧响应覆盖新结果
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -135,9 +137,7 @@ export function AIRewritePanel({
 
       setResult(data.result);
       setIsMock(data.meta?.mode === 'mock');
-      setActiveTab('diff');
 
-      // DIAGNOSTIC: log raw optimized strings
       if (process.env.NODE_ENV === 'development') {
         data.result.rewrittenBullets.forEach((b: { optimized: string }, i: number) => {
           console.log(`[DIAG] optimized[${i}] raw:`, JSON.stringify(b.optimized));
@@ -145,7 +145,6 @@ export function AIRewritePanel({
       }
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') {
-        // 用户主动取消或发起新请求，静默忽略
         return;
       }
       setError(e instanceof Error ? e.message : '未知错误');
@@ -154,17 +153,72 @@ export function AIRewritePanel({
     }
   }, [target, targetType, jobDescription, mode, userInstruction]);
 
+  // 应用到简历：必须使用用户当前编辑框里的文本
   const handleApply = useCallback(() => {
-    if (!result) return;
-    const bullets = result.rewrittenBullets.map((b) => b.optimized);
-    onApply(bullets);
+    if (!editedBullets.length) return;
+    onApply(editedBullets);
     onClose();
-  }, [result, onApply, onClose]);
+  }, [editedBullets, onApply, onClose]);
+
+  // 重新检查：基于当前编辑后的文本重新生成风险/建议，不覆盖用户文本
+  const handleRecheck = useCallback(async () => {
+    if (!target || !targetType || editedBullets.length === 0) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    setRechecking(true);
+    setError(null);
+
+    try {
+      const editedTarget = {
+        ...target,
+        bullets: editedBullets,
+      };
+
+      const res = await fetch('/api/rewrite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: abortControllerRef.current.signal,
+        body: JSON.stringify({
+          target: editedTarget,
+          targetType,
+          jobDescription,
+          mode,
+          userInstruction: userInstruction.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[FRONTEND RECHECK RECEIVED]', JSON.stringify(data, null, 2));
+      }
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || '请求失败');
+      }
+
+      setResult(data.result);
+      setIsMock(data.meta?.mode === 'mock');
+      // 保留用户编辑的文本，不覆盖 editedBullets
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') {
+        return;
+      }
+      setError(e instanceof Error ? e.message : '未知错误');
+    } finally {
+      setRechecking(false);
+    }
+  }, [target, targetType, editedBullets, jobDescription, mode, userInstruction]);
 
   const handleDiscard = useCallback(() => {
     abortControllerRef.current?.abort();
     setResult(null);
     setError(null);
+    setEditedBullets([]);
     onClose();
   }, [onClose]);
 
@@ -172,6 +226,7 @@ export function AIRewritePanel({
     setResult(null);
     setError(null);
     setIsMock(false);
+    setEditedBullets([]);
   }, []);
 
   if (!isOpen) return null;
@@ -180,12 +235,6 @@ export function AIRewritePanel({
     targetType === 'experience'
       ? (target as Experience)?.company || '工作经历'
       : (target as Project)?.name || '项目经历';
-
-  const hasFabrication = result?.fabricationBlocked ?? false;
-  const hasPendingItems =
-    (result?.missingMetrics.length ?? 0) > 0 ||
-    (result?.warnings.length ?? 0) > 0 ||
-    (result?.rewrittenBullets.some((b) => b.confidence !== 'verified') ?? false);
 
   // 前端保护：校验 AI 结果是否真正可用
   const isResultValid =
@@ -238,10 +287,8 @@ export function AIRewritePanel({
           {result && !loading && isResultValid && (
             <ResultView
               result={result}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              hasFabrication={hasFabrication}
-              hasPendingItems={hasPendingItems}
+              editedBullets={editedBullets}
+              onEditChange={setEditedBullets}
               isMock={isMock}
             />
           )}
@@ -254,38 +301,28 @@ export function AIRewritePanel({
         {/* ====== Footer ====== */}
         {result && !loading && isResultValid && (
           <div className="border-t border-zinc-200 bg-zinc-50 px-6 py-4">
-            {hasFabrication && (
-              <div className="mb-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5">
-                <ShieldAlert className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" />
-                <p className="text-xs leading-relaxed text-red-700">
-                  检测到 AI 输出存在编造嫌疑。请仔细核对每一条修改后再决定是否应用。
-                </p>
-              </div>
-            )}
-
-            {!hasFabrication && hasPendingItems && (
-              <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
-                <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500" />
-                <p className="text-xs leading-relaxed text-amber-700">
-                  优化结果中包含待确认或待补充的内容。建议先查看「风险提示」标签后再应用。
-                </p>
-              </div>
-            )}
-
+            {/* 风险控制文案 */}
+            <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+              AI 只负责给出初稿和检查提示。最终事实、数据、奖项和措辞由用户人工确认后再应用到简历。
+            </p>
             <div className="flex items-center gap-3">
               <button
                 onClick={handleApply}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-zinc-900 py-2.5 text-sm font-medium text-white hover:bg-zinc-800"
               >
                 <Check className="h-4 w-4" />
-                应用优化
+                应用到简历
               </button>
               <button
-                onClick={handleReset}
-                className="flex items-center gap-1.5 rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-600 hover:bg-white"
+                onClick={handleRecheck}
+                disabled={rechecking}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-600',
+                  rechecking ? 'opacity-60 cursor-not-allowed' : 'hover:bg-white'
+                )}
               >
-                <RotateCcw className="h-4 w-4" />
-                重新优化
+                <RotateCcw className={cn('h-4 w-4', rechecking && 'animate-spin')} />
+                {rechecking ? '检查中...' : '重新检查'}
               </button>
             </div>
           </div>
@@ -448,40 +485,37 @@ function InvalidResultView({ onRetry }: { onRetry: () => void }) {
 }
 
 // ============================================
-// 结果视图（优化后）
+// 结果视图（单页编辑工作区）
 // ============================================
 
 function ResultView({
   result,
-  activeTab,
-  onTabChange,
-  hasFabrication,
-  hasPendingItems,
+  editedBullets,
+  onEditChange,
   isMock,
 }: {
   result: RewriteResult;
-  activeTab: 'diff' | 'risks' | 'original';
-  onTabChange: (t: 'diff' | 'risks' | 'original') => void;
-  hasFabrication: boolean;
-  hasPendingItems: boolean;
+  editedBullets: string[];
+  onEditChange: (bullets: string[]) => void;
   isMock: boolean;
 }) {
-  const tabConfig = [
-    { key: 'diff' as const, label: '优化结果', icon: Sparkles },
-    {
-      key: 'risks' as const,
-      label: '风险提示',
-      icon: hasFabrication ? ShieldAlert : hasPendingItems ? AlertTriangle : Lightbulb,
-      badge:
-        result.warnings.length + result.missingMetrics.length > 0
-          ? result.warnings.length + result.missingMetrics.length
-          : undefined,
-    },
-    { key: 'original' as const, label: '原文', icon: FileText },
-  ];
+  const [originalExpanded, setOriginalExpanded] = useState(false);
+  const [tipsDismissed, setTipsDismissed] = useState(false);
+
+  const riskCount = result.warnings.length;
+  const missingCount = result.missingMetrics.length;
+  const suggestionCount = result.suggestions.length;
+  const totalIssues = riskCount + missingCount + suggestionCount;
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value;
+    // 以空行分隔不同的 bullet
+    const bullets = text.split(/\n\s*\n/).filter((b) => b.trim().length > 0);
+    onEditChange(bullets);
+  };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex flex-col">
       {/* Mock Warning */}
       {isMock && (
         <div className="flex items-center gap-1.5 border-b border-amber-200 bg-amber-50 px-6 py-2">
@@ -497,64 +531,150 @@ function ResultView({
         <p className="text-xs leading-relaxed text-zinc-600">{result.summary}</p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-zinc-200 px-6">
-        {tabConfig.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => onTabChange(tab.key)}
-              className={cn(
-                'relative flex items-center gap-1.5 border-b-2 px-3 py-3 text-xs font-medium transition-colors',
-                activeTab === tab.key
-                  ? 'border-zinc-900 text-zinc-900'
-                  : 'border-transparent text-zinc-400 hover:text-zinc-600'
-              )}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {tab.label}
-              {tab.badge && (
-                <span className="ml-0.5 rounded bg-amber-100 px-1 py-0 text-[10px] font-medium text-amber-700">
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <div className="space-y-5 px-6 py-5">
+        {/* A. 审核摘要 */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-center">
+            <p className="text-lg font-semibold text-amber-600">{riskCount}</p>
+            <p className="text-[11px] text-zinc-500">需确认风险</p>
+          </div>
+          <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-center">
+            <p className="text-lg font-semibold text-sky-600">{missingCount}</p>
+            <p className="text-[11px] text-zinc-500">待补充</p>
+          </div>
+          <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-center">
+            <p className="text-lg font-semibold text-emerald-600">{suggestionCount}</p>
+            <p className="text-[11px] text-zinc-500">优化建议</p>
+          </div>
+        </div>
 
-      {/* Tab Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-5">
-        {activeTab === 'diff' && (
-          <DiffView
-            originalBullets={result.originalBullets}
-            optimizedBullets={result.rewrittenBullets}
-            showOriginal={false}
+        {/* B. 优化结果｜可直接编辑 */}
+        <section>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            优化结果
+          </h3>
+          <textarea
+            value={editedBullets.join('\n\n')}
+            onChange={handleTextChange}
+            rows={Math.max(6, editedBullets.length * 2)}
+            className="w-full rounded-lg border border-zinc-300 px-3.5 py-3 text-sm leading-relaxed text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900"
           />
-        )}
+          <p className="mt-1.5 text-[11px] text-zinc-400">
+            可直接修改上方文本，应用时将使用您编辑后的内容
+          </p>
+        </section>
 
-        {activeTab === 'risks' && (
-          <RiskPanel
-            warnings={result.warnings}
-            missingMetrics={result.missingMetrics}
-            suggestions={result.suggestions}
-          />
-        )}
-
-        {activeTab === 'original' && (
-          <div className="space-y-3">
-            {result.originalBullets.map((bullet, i) => (
-              <div
-                key={i}
-                className="rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-3 text-sm text-zinc-600"
+        {/* C. 集中提示区 */}
+        {totalIssues > 0 && !tipsDismissed && (
+          <section className="rounded-lg border border-zinc-200 bg-zinc-50 p-3.5">
+            <div className="mb-2.5 flex items-center justify-between">
+              <h3 className="text-xs font-semibold text-zinc-700">检查提示</h3>
+              <button
+                onClick={() => setTipsDismissed(true)}
+                className="text-[11px] text-zinc-400 hover:text-zinc-600"
               >
-                <span className="mr-2 text-xs text-zinc-400">#{i + 1}</span>
-                {bullet}
+                全部忽略
+              </button>
+            </div>
+
+            {/* 风险 */}
+            {riskCount > 0 && (
+              <div className="mb-2.5">
+                <p className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-zinc-600">
+                  <AlertTriangle className="h-3 w-3 text-amber-500" />
+                  风险：请确认以下表述是否真实准确
+                </p>
+                <ul className="space-y-1 pl-4">
+                  {result.warnings.map((w, i) => (
+                    <li key={`w-${i}`} className="text-xs leading-relaxed text-zinc-500">
+                      • {w.message}
+                      {w.suggestion && (
+                        <span className="text-zinc-400">（{w.suggestion}）</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </div>
-            ))}
+            )}
+
+            {/* 待补充 */}
+            {missingCount > 0 && (
+              <div className="mb-2.5">
+                <p className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-zinc-600">
+                  <Lightbulb className="h-3 w-3 text-sky-500" />
+                  待补充：如有真实数据，可补充以下内容
+                </p>
+                <ul className="space-y-1 pl-4">
+                  {result.missingMetrics.map((m, i) => (
+                    <li key={`m-${i}`} className="text-xs leading-relaxed text-zinc-500">
+                      • {m.description}
+                      {m.suggestion && (
+                        <span className="text-zinc-400">（{m.suggestion}）</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* 建议 */}
+            {suggestionCount > 0 && (
+              <div>
+                <p className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-zinc-600">
+                  <Sparkles className="h-3 w-3 text-emerald-500" />
+                  建议：参考以下方向进一步优化
+                </p>
+                <ul className="space-y-1 pl-4">
+                  {result.suggestions.map((s, i) => (
+                    <li key={`s-${i}`} className="text-xs leading-relaxed text-zinc-500">
+                      • {s.title}：{s.detail}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+        )}
+
+        {totalIssues > 0 && tipsDismissed && (
+          <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-2.5">
+            <p className="text-xs text-zinc-500">提示已忽略</p>
+            <button
+              onClick={() => setTipsDismissed(false)}
+              className="text-xs text-zinc-600 hover:text-zinc-900"
+            >
+              重新显示
+            </button>
           </div>
         )}
+
+        {/* D. 原始经历折叠区 */}
+        <section>
+          <button
+            onClick={() => setOriginalExpanded(!originalExpanded)}
+            className="flex w-full items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="h-3.5 w-3.5 text-zinc-400" />
+              <span className="text-xs font-medium text-zinc-600">原始经历</span>
+            </div>
+            {originalExpanded ? (
+              <ChevronUp className="h-3.5 w-3.5 text-zinc-400" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+            )}
+          </button>
+          {originalExpanded && (
+            <div className="mt-2 space-y-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3.5">
+              {result.originalBullets.map((bullet, i) => (
+                <div key={i} className="text-xs leading-relaxed text-zinc-500">
+                  <span className="mr-2 text-zinc-400">#{i + 1}</span>
+                  {bullet}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
