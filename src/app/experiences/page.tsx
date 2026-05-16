@@ -52,6 +52,12 @@ export default function ExperiencesPage() {
     setEditorOpen(true);
   };
 
+  const handleEnterEdit = (id: string, kind: string) => {
+    selectExperience(id, kind);
+    setEditorKind(kind as EditorKind);
+    setEditorOpen(true);
+  };
+
   const handleCloseEditor = () => {
     setEditorOpen(false);
     setEditorKind(null);
@@ -239,7 +245,7 @@ export default function ExperiencesPage() {
                   </div>
                 </div>
               ) : (
-                <ExperienceList searchQuery={searchQuery} />
+                <ExperienceList searchQuery={searchQuery} onEnterEdit={handleEnterEdit} />
               )}
             </div>
           </div>

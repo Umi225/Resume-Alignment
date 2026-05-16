@@ -21,9 +21,10 @@ interface FlatItem {
 
 interface ExperienceListProps {
   searchQuery?: string;
+  onEnterEdit?: (id: string, kind: string) => void;
 }
 
-export function ExperienceList({ searchQuery = '' }: ExperienceListProps) {
+export function ExperienceList({ searchQuery = '', onEnterEdit }: ExperienceListProps) {
   const {
     profile,
     filterType,
@@ -133,7 +134,7 @@ export function ExperienceList({ searchQuery = '' }: ExperienceListProps) {
           item={{ kind: item.kind, ...item.data } as never}
           isSelected={selectedId === item.id}
           onClick={() => selectExperience(item.id, item.kind)}
-          onEdit={() => selectExperience(item.id, item.kind)}
+          onEdit={() => onEnterEdit?.(item.id, item.kind)}
           onDelete={() => handleDelete(item.kind, item.id)}
         />
       ))}
