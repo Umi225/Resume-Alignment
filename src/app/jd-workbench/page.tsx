@@ -92,7 +92,7 @@ export default function JDWorkbenchPage() {
               <h3 className="text-caption font-medium text-zinc-700">推荐经历</h3>
               <p className="mt-0.5 text-micro text-zinc-400">
                 {hasAnalyzed
-                  ? `基于 ${analysis?.keywords.length || 0} 个关键词匹配`
+                  ? '已按当前 JD 推荐相关经历'
                   : '请先分析 JD'}
               </p>
             </div>
@@ -207,11 +207,11 @@ function JDAnalysisView({
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
-      {/* 概览卡片 */}
-      <div className="grid grid-cols-3 gap-3">
-        <OverviewCard label="提取关键词" value={analysis.keywords.length} />
-        <OverviewCard label="硬性要求" value={analysis.requirements.length} />
-        <OverviewCard label="匹配经历" value={matches.filter((m) => m.score >= 40).length} />
+      {/* 轻量状态提示 */}
+      <div className="card p-4 text-center">
+        <p className="text-small text-zinc-600">
+          AI 已完成 JD 对齐分析，已按当前 JD 推荐相关经历
+        </p>
       </div>
 
       {selectedCount > 0 && (
@@ -234,50 +234,7 @@ function JDAnalysisView({
           </div>
         </div>
       )}
-
-      {/* 硬性要求 */}
-      {analysis.requirements.length > 0 && (
-        <div className="card p-4">
-          <h3 className="text-caption font-medium text-zinc-900 mb-2">硬性要求</h3>
-          <div className="flex flex-wrap gap-1.5">
-            {analysis.requirements.map((req, i) => (
-              <span
-                key={i}
-                className="rounded-md bg-amber-50 px-2 py-1 text-micro font-medium text-amber-700 border border-amber-200"
-              >
-                {req.rawText}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 关键词分析 */}
-      {analysis.keywords.length > 0 && (
-        <div className="card p-4">
-          <h3 className="text-caption font-medium text-zinc-900 mb-3">关键词分析</h3>
-          <div className="flex flex-wrap gap-1.5">
-            {analysis.keywords.map((kw) => (
-              <span
-                key={kw.word}
-                className="inline-flex items-center rounded-md bg-zinc-100 px-2 py-[3px] text-micro text-zinc-700"
-              >
-                {kw.word}
-                <span className="ml-1 text-zinc-400">{kw.weight}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-function OverviewCard({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="card p-4 text-center">
-      <p className="text-h1 text-zinc-900">{value}</p>
-      <p className="mt-0.5 text-micro text-zinc-500">{label}</p>
-    </div>
-  );
-}

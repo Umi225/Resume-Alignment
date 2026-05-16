@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import type { AssetMatchResult, AssetKind } from '@/lib/jdMatcher';
-import { MatchScore } from './MatchScore';
 import { cn } from '@/lib/utils';
 import {
   GraduationCap,
@@ -16,8 +15,6 @@ import {
   Target,
   Sparkles,
   Wand2,
-  CheckSquare,
-  Square,
   FileText,
 } from 'lucide-react';
 import type { Experience, Project } from '@/types/resume';
@@ -111,6 +108,45 @@ function getAssetBullets(result: AssetMatchResult): string[] {
   return [];
 }
 
+// 推荐等级徽章配置
+const levelConfig: Record<
+  'highly' | 'recommended' | 'optional',
+  { label: string; className: string }
+> = {
+  highly: {
+    label: '高度推荐',
+    className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  },
+  recommended: {
+    label: '推荐',
+    className: 'bg-blue-50 text-blue-700 border-blue-200',
+  },
+  optional: {
+    label: '可选',
+    className: 'bg-zinc-50 text-zinc-600 border-zinc-200',
+  },
+};
+
+// 技能/证书类型标签映射
+const skillCategoryLabels: Record<string, string> = {
+  language: '语言能力',
+  tool: '工具能力',
+  technical: '岗位相关能力',
+  certificate: '专业证书',
+  exam: '考试成绩',
+};
+
+function getSkillCategoryLabel(result: AssetMatchResult): string {
+  if (result.kind === 'skill') {
+    const category = (result.asset as { category?: string }).category;
+    return skillCategoryLabels[category || ''] || '技能';
+  }
+  if (result.kind === 'certification') return '专业证书';
+  if (result.kind === 'award') return '荣誉奖项';
+  if (result.kind === 'education') return '教育背景';
+  return kindConfig[result.kind]?.label || '';
+}
+
 interface JDRecommendationsProps {
   matches: AssetMatchResult[];
   optimizedIds?: string[];
@@ -151,14 +187,11 @@ export function JDRecommendations({
     });
   };
 
+  const isExperienceLike = (kind: AssetKind) =>
+    kind === 'experience' || kind === 'project';
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between px-1">
-        <span className="text-small font-medium text-zinc-700">
-          共 {matches.length} 条匹配结果
-        </span>
-      </div>
-
       <div className="space-y-2">
         {matches.map((result) => {
           const config = kindConfig[result.kind];
@@ -168,12 +201,14 @@ export function JDRecommendations({
           const isOptimized = optimizedIds.includes(assetId);
           const isSelected = selectedIds.includes(assetId);
           const canSelect = result.kind !== 'education';
-          const canOptimize = result.kind === 'experience' || result.kind === 'project';
-          const optimizedVersion =
-            canOptimize
-              ? (result.asset as Experience | Project).optimizedVersion
-              : undefined;
+          const canOptimize = isExperienceLike(result.kind);
+          const optimizedVersion = canOptimize
+            ? (result.asset as Experience | Project).optimizedVersion
+            : undefined;
           const showOriginal = showOriginalFor.has(assetId);
+          const isExp = isExperienceLike(result.kind);
+          const level = result.recommendationLevel;
+          const advice = result.advice || '';
 
           return (
             <div
@@ -199,73 +234,92 @@ export function JDRecommendations({
                     <span className="text-caption font-medium text-zinc-900 truncate">
                       {getAssetTitle(result)}
                     </span>
-                    <span className={cn('rounded px-1.5 py-0 text-micro', config.bg, config.color)}>
-                      {config.label}
-                    </span>
-                  </div>
-                  {getAssetSubtitle(result) && (
-                    <p className="text-micro text-zinc-500 truncate">{getAssetSubtitle(result)}</p>
-                  )}
-
-                  {/* Match score + keywords */}
-                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                    <MatchScore score={result.score} size="sm" showLabel={true} />
-                    {result.matchedKeywords.slice(0, 3).map((kw) => (
+                    {isExp && level && (
                       <span
-                        key={kw}
-                        className="rounded bg-emerald-50 px-1.5 py-0 text-[10px] font-medium text-emerald-700"
+                        className={cn(
+                          'rounded border px-1.5 py-0 text-[10px] font-medium',
+                          levelConfig[level].className
+                        )}
                       >
-                        {kw}
+                        {levelConfig[level].label}
                       </span>
-                    ))}
-                    {result.matchedKeywords.length > 3 && (
-                      <span className="text-micro text-zinc-400">
-                        +{result.matchedKeywords.length - 3}
+                    )}
+                    {!isExp && (
+                      <span
+                        className={cn(
+                          'rounded border px-1.5 py-0 text-[10px] font-medium bg-slate-50 text-slate-600 border-slate-200'
+                        )}
+                      >
+                        {getSkillCategoryLabel(result)}
                       </span>
                     )}
                   </div>
-                </div>
-
-                {/* 勾选框 — 所有非教育类经历均可勾选 */}
-                {canSelect && (
-                  <button
-                    onClick={() => onToggleSelect?.(assetId)}
-                    className="shrink-0"
-                  >
-                    {isSelected ? (
-                      <CheckSquare className="h-5 w-5 text-zinc-900" />
-                    ) : (
-                      <Square className="h-5 w-5 text-zinc-400 hover:text-zinc-600" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-micro text-zinc-400">{config.label}</span>
+                    {getAssetSubtitle(result) && (
+                      <>
+                        <span className="text-micro text-zinc-300">|</span>
+                        <span className="text-micro text-zinc-500 truncate">
+                          {getAssetSubtitle(result)}
+                        </span>
+                      </>
                     )}
-                  </button>
-                )}
+                  </div>
+                  {advice && (
+                    <p className="mt-1 text-micro text-zinc-600 leading-relaxed">
+                      {advice}
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Actions */}
               <div className="flex items-center justify-between border-t border-zinc-100 px-3 py-2">
                 <div className="flex items-center gap-2">
+                  {canSelect && (
+                    <button
+                      onClick={() => onToggleSelect?.(assetId)}
+                      className={cn(
+                        'inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-micro font-medium transition-colors',
+                        isSelected
+                          ? 'bg-zinc-900 text-white hover:bg-zinc-800'
+                          : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                      )}
+                    >
+                      {isSelected ? (
+                        <>取消选择</>
+                      ) : (
+                        <>选择</>
+                      )}
+                    </button>
+                  )}
                   {canOptimize && (
                     <button
                       onClick={() => {
                         const kind = result.kind as 'experience' | 'project';
-                        onGenerateOptimize?.(result.asset as Experience | Project, kind);
+                        onGenerateOptimize?.(
+                          result.asset as Experience | Project,
+                          kind
+                        );
                       }}
                       className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-micro font-medium text-blue-700 hover:bg-blue-100 transition-colors"
                     >
                       <Sparkles className="h-3 w-3" />
-                      {isOptimized ? '重新生成' : '生成推荐版本'}
+                      {isOptimized ? '重新优化' : 'AI 优化'}
                     </button>
                   )}
                   {isOptimized && (
                     <span className="inline-flex items-center gap-1 text-micro text-blue-600">
                       <Wand2 className="h-3 w-3" />
-                      当前JD已生成推荐
+                      已优化
                     </span>
                   )}
                 </div>
                 <button
                   onClick={() =>
-                    setExpandedId(isExpanded ? null : `${result.kind}-${assetId}`)
+                    setExpandedId(
+                      isExpanded ? null : `${result.kind}-${assetId}`
+                    )
                   }
                   className="flex items-center gap-0.5 text-micro text-zinc-400 hover:text-zinc-600"
                 >
@@ -287,27 +341,23 @@ export function JDRecommendations({
                         <p className="text-micro font-semibold text-blue-700">
                           AI 推荐版本
                         </p>
-                        {optimizedVersion.jdScore !== undefined && (
-                          <span className="text-[10px] font-medium text-blue-600">
-                            匹配度 {optimizedVersion.jdScore}%
-                          </span>
-                        )}
                       </div>
                       <div className="text-micro leading-relaxed text-zinc-700 whitespace-pre-line">
                         {optimizedVersion.content}
                       </div>
-                      {optimizedVersion.highlights && optimizedVersion.highlights.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {optimizedVersion.highlights.map((h) => (
-                            <span
-                              key={h}
-                              className="rounded bg-white px-1.5 py-0 text-[10px] font-medium text-emerald-700 border border-emerald-200"
-                            >
-                              {h}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      {optimizedVersion.highlights &&
+                        optimizedVersion.highlights.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {optimizedVersion.highlights.map((h) => (
+                              <span
+                                key={h}
+                                className="rounded bg-white px-1.5 py-0 text-[10px] font-medium text-emerald-700 border border-emerald-200"
+                              >
+                                {h}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                     </div>
                   )}
 
@@ -337,34 +387,6 @@ export function JDRecommendations({
                             </li>
                           ))}
                         </ul>
-                      )}
-                    </div>
-                  )}
-
-                  {/* 匹配详情 */}
-                  {result.details.length > 0 && (
-                    <div className="space-y-1.5">
-                      <p className="text-micro font-semibold uppercase tracking-wider text-zinc-400">
-                        匹配详情
-                      </p>
-                      {result.details.slice(0, 6).map((detail, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center gap-2 rounded-lg bg-zinc-50 px-2.5 py-1.5"
-                        >
-                          <span className="rounded bg-white px-1.5 py-0 text-micro font-medium text-zinc-700 border border-zinc-200">
-                            {detail.keyword}
-                          </span>
-                          <span className="text-micro text-zinc-400">命中于</span>
-                          <span className="text-micro font-medium text-zinc-600">
-                            {detail.matchedField}
-                          </span>
-                        </div>
-                      ))}
-                      {result.details.length > 6 && (
-                        <p className="text-micro text-zinc-400">
-                          还有 {result.details.length - 6} 条...
-                        </p>
                       )}
                     </div>
                   )}

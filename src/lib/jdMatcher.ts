@@ -258,9 +258,12 @@ export function analyzeJD(jdText: string): JDAnalysisResult {
   const seenWords = new Set<string>();
 
   Array.from(allKeywordForms.entries()).forEach(([form, def]) => {
-    const regex = new RegExp(`\\b${escapeRegex(form)}\\b`, 'gi');
-    const matches = lower.match(regex);
-    if (matches && matches.length > 0) {
+    // 中文关键词不使用 \b 词边界（JavaScript \b 仅对 ASCII 生效）
+    const isChinese = /[一-龥]/.test(form);
+    const hasMatch = isChinese
+      ? lower.includes(form)
+      : new RegExp(`\\b${escapeRegex(form)}\\b`, 'gi').test(lower);
+    if (hasMatch) {
       const baseWord = def.word;
       if (!seenWords.has(baseWord)) {
         seenWords.add(baseWord);
@@ -268,7 +271,7 @@ export function analyzeJD(jdText: string): JDAnalysisResult {
           word: baseWord,
           category: def.category,
           weight: def.weight,
-          positions: matches.map((_, i) => lower.indexOf(form, i)),
+          positions: [],
         });
       }
     }
@@ -341,6 +344,8 @@ export interface AssetMatchResult {
   matchedKeywords: string[];
   details: MatchDetail[];
   reason: string;
+  recommendationLevel?: 'highly' | 'recommended' | 'optional';
+  advice?: string;
 }
 
 // 字段匹配权重配置
@@ -727,6 +732,59 @@ function generateReason(
 }
 
 // ============================================
+// 建议文案生成（中性表述，规则模板）
+// ============================================
+
+const languageKeywords = ['英语', '日语', '韩语', '法语', '德语', '雅思', '托福', 'ielts', 'toefl', 'catti', '日语能力'];
+const toolKeywords = ['git', 'docker', 'jenkins', 'figma', 'sketch', 'vscode', 'webpack', 'vite'];
+
+function generateAdvice(result: AssetMatchResult): string {
+  const { kind, score, recommendationLevel, details } = result;
+
+  // 经历类：experience / project
+  if (kind === 'experience' || kind === 'project') {
+    if (recommendationLevel === 'highly') {
+      return '建议放在简历靠前位置，并强化结果表达。';
+    }
+    if (recommendationLevel === 'recommended') {
+      const hasTech = details.some((d) => d.weight >= 3);
+      return hasTech
+        ? '适合体现技术深度与项目落地能力。'
+        : '适合体现产品判断与跨团队协作能力。';
+    }
+    return '可作为补充经历，视简历篇幅决定是否放入。';
+  }
+
+  // 技能类
+  if (kind === 'skill') {
+    const s = result.asset as Skill;
+    const text = `${s.name} ${s.category || ''} ${s.description || ''}`.toLowerCase();
+    const isLanguage = languageKeywords.some((kw) => text.includes(kw.toLowerCase()));
+    const isTool = toolKeywords.some((kw) => text.includes(kw.toLowerCase())) || s.category === '工具';
+    if (isLanguage) return '适合放入语言能力模块。';
+    if (isTool) return '建议与项目经历形成呼应。';
+    return '建议在技能与证书栏展示。';
+  }
+
+  // 证书类
+  if (kind === 'certification') {
+    return '可作为岗位相关能力展示。';
+  }
+
+  // 奖项类
+  if (kind === 'award') {
+    return '适合在荣誉奖项模块简要展示。';
+  }
+
+  // 教育类
+  if (kind === 'education') {
+    return '教育背景为简历基础模块，默认展示。';
+  }
+
+  return '';
+}
+
+// ============================================
 // 主匹配入口
 // ============================================
 
@@ -770,6 +828,28 @@ export function matchProfileToJD(profile: ResumeProfile, jdText: string): FullMa
     if (b.score !== a.score) return b.score - a.score;
     return kindPriority[a.kind] - kindPriority[b.kind];
   });
+
+  // 对经历类资产设置相对推荐等级（Top 30% 高度推荐 / Middle 40% 推荐 / Bottom 30% 可选）
+  const experienceMatches = matches.filter(
+    (m) => m.kind === 'experience' || m.kind === 'project'
+  );
+  const total = experienceMatches.length;
+  if (total > 0) {
+    const highlyCount = Math.max(1, Math.ceil(total * 0.3));
+    const recommendedCount = Math.max(0, Math.ceil(total * 0.7) - highlyCount);
+
+    experienceMatches.forEach((m, idx) => {
+      if (idx < highlyCount) m.recommendationLevel = 'highly';
+      else if (idx < highlyCount + recommendedCount)
+        m.recommendationLevel = 'recommended';
+      else m.recommendationLevel = 'optional';
+    });
+  }
+
+  // 为所有匹配结果生成建议文案
+  for (const m of matches) {
+    m.advice = generateAdvice(m);
+  }
 
   return { jdAnalysis, matches };
 }
