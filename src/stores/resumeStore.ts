@@ -105,7 +105,29 @@ export const useResumeStore = create<ResumeState>()(
       selectedOptimizedIds: [],
 
       setFilterType: (type) => set({ filterType: type }),
-      setCurrentJD: (jd) => set({ currentJD: jd }),
+      setCurrentJD: (jd) =>
+        set((state) => {
+          if (state.currentJD === jd) {
+            return { currentJD: jd };
+          }
+          const now = new Date().toISOString();
+          return {
+            currentJD: jd,
+            selectedOptimizedIds: [],
+            profile: {
+              ...state.profile,
+              experience: state.profile.experience.map((item) => ({
+                ...item,
+                optimizedVersion: undefined,
+              })),
+              projects: state.profile.projects.map((item) => ({
+                ...item,
+                optimizedVersion: undefined,
+              })),
+              updatedAt: now,
+            },
+          };
+        }),
 
       selectExperience: (id, type) => set({ selectedId: id, selectedType: type }),
 

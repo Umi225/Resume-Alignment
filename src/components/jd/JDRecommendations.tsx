@@ -244,7 +244,7 @@ export function JDRecommendations({
               {/* Actions */}
               <div className="flex items-center justify-between border-t border-zinc-100 px-3 py-2">
                 <div className="flex items-center gap-2">
-                  {canOptimize && !isOptimized && (
+                  {canOptimize && (
                     <button
                       onClick={() => {
                         const kind = result.kind as 'experience' | 'project';
@@ -253,13 +253,13 @@ export function JDRecommendations({
                       className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-micro font-medium text-blue-700 hover:bg-blue-100 transition-colors"
                     >
                       <Sparkles className="h-3 w-3" />
-                      生成推荐版本
+                      {isOptimized ? '重新生成' : '生成推荐版本'}
                     </button>
                   )}
                   {isOptimized && (
                     <span className="inline-flex items-center gap-1 text-micro text-blue-600">
                       <Wand2 className="h-3 w-3" />
-                      已生成推荐版
+                      当前JD已生成推荐
                     </span>
                   )}
                 </div>

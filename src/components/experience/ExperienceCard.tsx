@@ -83,7 +83,7 @@ export function ExperienceCard({
           {hasOptimized && (
             <span className="inline-flex items-center gap-0.5 rounded bg-blue-50 px-1.5 py-0 text-[10px] font-medium text-blue-600">
               <Wand2 className="h-2.5 w-2.5" />
-              已生成推荐版
+              当前JD已生成推荐
             </span>
           )}
         </div>
