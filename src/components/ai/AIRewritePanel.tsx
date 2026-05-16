@@ -6,7 +6,6 @@
  * 职责：右侧 AI 优化面板
  *
  * 包含：
- * - 优化模式选择
  * - 原文展示
  * - AI 优化结果（Diff 高亮）
  * - 修改说明
@@ -74,37 +73,7 @@ function looksLikeJSON(str: string): boolean {
 // 优化模式配置
 // ============================================
 
-const MODE_CONFIG: Array<{
-  key: OptimizationMode;
-  label: string;
-  description: string;
-}> = [
-  {
-    key: 'full',
-    label: '全面优化',
-    description: '表达润色 + 结构重组 + 术语对齐',
-  },
-  {
-    key: 'action',
-    label: '强化 Action',
-    description: '重点强化动词和具体动作',
-  },
-  {
-    key: 'result',
-    label: '强化 Result',
-    description: '突出量化成果，标记缺失',
-  },
-  {
-    key: 'jd_match',
-    label: 'JD 对齐',
-    description: '针对目标岗位调整术语',
-  },
-  {
-    key: 'polish',
-    label: '轻度润色',
-    description: '保守优化，保持原意',
-  },
-];
+const DEFAULT_MODE: OptimizationMode = 'full';
 
 // ============================================
 // 主组件
@@ -118,7 +87,7 @@ export function AIRewritePanel({
   onClose,
   onApply,
 }: AIRewritePanelProps) {
-  const [mode, setMode] = useState<OptimizationMode>('full');
+  const mode = DEFAULT_MODE;
   const [userInstruction, setUserInstruction] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RewriteResult | null>(null);
@@ -240,7 +209,7 @@ export function AIRewritePanel({
               <Sparkles className="h-4 w-4 text-white" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-zinc-900">AI 优化</h2>
+              <h2 className="text-sm font-semibold text-zinc-900">✨ AI 简历优化</h2>
               <p className="text-xs text-zinc-500">{targetLabel}</p>
             </div>
           </div>
@@ -256,8 +225,6 @@ export function AIRewritePanel({
         <div className="flex-1 overflow-y-auto">
           {!result && !loading && (
             <ConfigView
-              mode={mode}
-              onModeChange={setMode}
               userInstruction={userInstruction}
               onInstructionChange={setUserInstruction}
               hasJD={!!jobDescription && jobDescription.trim().length > 0}
@@ -333,16 +300,12 @@ export function AIRewritePanel({
 // ============================================
 
 function ConfigView({
-  mode,
-  onModeChange,
   userInstruction,
   onInstructionChange,
   hasJD,
   onOptimize,
   error,
 }: {
-  mode: OptimizationMode;
-  onModeChange: (m: OptimizationMode) => void;
   userInstruction: string;
   onInstructionChange: (v: string) => void;
   hasJD: boolean;
@@ -351,35 +314,24 @@ function ConfigView({
 }) {
   return (
     <div className="space-y-6 px-6 py-5">
-      {/* Mode Selection */}
-      <section>
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-          优化模式
-        </h3>
-        <div className="grid grid-cols-1 gap-2">
-          {MODE_CONFIG.map((m) => (
-            <button
-              key={m.key}
-              onClick={() => onModeChange(m.key)}
-              className={cn(
-                'flex flex-col rounded-lg border px-4 py-3 text-left transition-all',
-                mode === m.key
-                  ? 'border-zinc-900 bg-zinc-900 text-white'
-                  : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400'
-              )}
-            >
-              <span className="text-sm font-medium">{m.label}</span>
-              <span
-                className={cn(
-                  'mt-0.5 text-xs',
-                  mode === m.key ? 'text-zinc-300' : 'text-zinc-400'
-                )}
-              >
-                {m.description}
-              </span>
-            </button>
+      {/* Description */}
+      <section className="rounded-xl bg-zinc-50 px-4 py-4">
+        <p className="text-sm leading-relaxed text-zinc-700">
+          AI 将基于 STAR 法则、岗位 JD 与简历规范，自动优化当前经历表达。
+        </p>
+        <ul className="mt-2.5 space-y-1">
+          {[
+            '强化行动描述',
+            '补足成果表达',
+            '对齐岗位关键词',
+            '保持真实、不虚构',
+          ].map((item) => (
+            <li key={item} className="flex items-center gap-2 text-xs text-zinc-500">
+              <span className="h-1 w-1 rounded-full bg-zinc-400" />
+              {item}
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
 
       {/* JD Hint */}
@@ -407,7 +359,7 @@ function ConfigView({
           onChange={(e) => onInstructionChange(e.target.value)}
           rows={3}
           className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900"
-          placeholder="如：重点突出性能优化成果、使用更技术性的表达..."
+          placeholder={`例如：\n- 突出数据分析能力\n- 更偏互联网表达\n- 强调跨团队协作\n- 强化产品思维`}
         />
       </section>
 
@@ -424,7 +376,7 @@ function ConfigView({
         className="flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 py-3 text-sm font-medium text-white hover:bg-zinc-800"
       >
         <Sparkles className="h-4 w-4" />
-        开始 AI 优化
+        ✨ 一键优化经历
       </button>
 
       {/* Safety Note */}
