@@ -167,6 +167,13 @@ export function AIRewritePanel({
       setResult(data.result);
       setIsMock(data.meta?.mode === 'mock');
       setActiveTab('diff');
+
+      // DIAGNOSTIC: log raw optimized strings
+      if (process.env.NODE_ENV === 'development') {
+        data.result.rewrittenBullets.forEach((b: { optimized: string }, i: number) => {
+          console.log(`[DIAG] optimized[${i}] raw:`, JSON.stringify(b.optimized));
+        });
+      }
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') {
         // 用户主动取消或发起新请求，静默忽略

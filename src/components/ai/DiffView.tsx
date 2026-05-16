@@ -212,15 +212,19 @@ export function DiffView({
   className,
 }: DiffViewProps) {
   const diffs = useMemo(() => {
-    return optimizedBullets.map((opt, i) =>
-      diffBullet(
+    return optimizedBullets.map((opt, i) => {
+      const diff = diffBullet(
         originalBullets[i] || '',
         opt.optimized,
         i,
         opt.changeType,
         opt.confidence
-      )
-    );
+      );
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[DIAG] diff[${i}] chunks:`, diff.chunks.map(c => ({ type: c.type, old: c.oldText, new: c.newText })));
+      }
+      return diff;
+    });
   }, [originalBullets, optimizedBullets]);
 
   return (

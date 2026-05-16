@@ -60,8 +60,8 @@ function computeLCS(oldStr: string, newStr: string): LCSResult {
     if (!buffer) return;
     sequence.unshift({
       type: buffer.type,
-      oldText: buffer.oldChars.join(''),
-      newText: buffer.newChars.join(''),
+      oldText: buffer.oldChars.reverse().join(''),
+      newText: buffer.newChars.reverse().join(''),
     });
     buffer = null;
   }
