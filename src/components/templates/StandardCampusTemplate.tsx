@@ -53,15 +53,6 @@ function ExperienceItem({ exp }: { exp: Experience }) {
           </li>
         ))}
       </ul>
-      {exp.tags.length > 0 && (
-        <div className="mt-1 flex flex-wrap gap-1">
-          {exp.tags.map((tag) => (
-            <span key={tag} className="rounded bg-gray-100 px-1.5 py-0 text-[10px] text-gray-500">
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -86,15 +77,6 @@ function ProjectItem({ proj }: { proj: Project }) {
           </li>
         ))}
       </ul>
-      {proj.tags.length > 0 && (
-        <div className="mt-1 flex flex-wrap gap-1">
-          {proj.tags.map((tag) => (
-            <span key={tag} className="rounded bg-gray-100 px-1.5 py-0 text-[10px] text-gray-500">
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

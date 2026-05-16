@@ -16,7 +16,6 @@ import {
   Code2,
   Pencil,
   Trash2,
-  Star,
 } from 'lucide-react';
 
 type ExperienceItem =
@@ -72,12 +71,6 @@ export function ExperienceCard({
             <Icon className="h-3 w-3" />
             {config.label}
           </span>
-          {item.kind === 'experience' && item.featured && (
-            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-          )}
-          {item.kind === 'project' && item.featured && (
-            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-          )}
         </div>
         <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
           <button
@@ -106,19 +99,6 @@ export function ExperienceCard({
         <CardContent item={item} />
       </div>
 
-      {/* Tags */}
-      {(item.kind === 'experience' || item.kind === 'project') && item.tags.length > 0 && (
-        <div className="mt-2.5 flex flex-wrap gap-1">
-          {item.tags.map((tag) => (
-            <span
-              key={tag}
-              className="tag"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

@@ -13,6 +13,12 @@ import type { JDAnalysisResult, AssetMatchResult } from '@/lib/jdMatcher';
 import type { Experience, Project } from '@/types/resume';
 import type { RewriteTargetType } from '@/lib/ai/types';
 
+function formatWeight(value: number): string {
+  return Number.isInteger(value)
+    ? String(value)
+    : value.toFixed(1).replace(/\.0$/, '');
+}
+
 export default function JDWorkbenchPage() {
   const {
     profile,
@@ -263,7 +269,7 @@ function JDAnalysisView({
                 title={`命中关键词：${cap.keywords.join('、')}`}
               >
                 {CAPABILITY_LABELS[cap.capability] || cap.capability}
-                <span className="text-zinc-400">· {cap.totalWeight}</span>
+                <span className="text-zinc-400">· {formatWeight(cap.totalWeight)}</span>
               </span>
             ))}
           </div>

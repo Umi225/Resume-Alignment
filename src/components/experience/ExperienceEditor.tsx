@@ -415,25 +415,6 @@ function ExperienceForm({
         </button>
       </div>
 
-      <TagInput
-        label="技能标签"
-        tags={data.tags || []}
-        onChange={(tags) => setData({ ...data, tags })}
-        placeholder="如 Go, Redis, 微服务"
-      />
-
-      <label className="flex items-center gap-2"
-      >
-        <input
-          type="checkbox"
-          checked={data.featured}
-          onChange={(e) => setData({ ...data, featured: e.target.checked })}
-          className="h-4 w-4 rounded border-zinc-300"
-        />
-        <span className="text-sm text-zinc-700"
-        >标记为重点经历</span>
-      </label>
-
       <SaveButton onClick={handleSave} disabled={!data.company || !data.role || !data.startDate} />
     </div>
   );
@@ -543,25 +524,6 @@ function ProjectForm({
         onChange={(v) => setData({ ...data, outcome: v })}
         placeholder="如：获挑战杯国一、发表 ACL 2024、GitHub 2k+ stars"
       />
-
-      <TagInput
-        label="技术栈标签"
-        tags={data.tags || []}
-        onChange={(tags) => setData({ ...data, tags })}
-        placeholder="如 React, TypeScript, Node.js"
-      />
-
-      <label className="flex items-center gap-2"
-      >
-        <input
-          type="checkbox"
-          checked={data.featured}
-          onChange={(e) => setData({ ...data, featured: e.target.checked })}
-          className="h-4 w-4 rounded border-zinc-300"
-        />
-        <span className="text-sm text-zinc-700"
-        >标记为重点项目</span>
-      </label>
 
       <SaveButton onClick={handleSave} disabled={!data.name || !data.role || !data.startDate} />
     </div>

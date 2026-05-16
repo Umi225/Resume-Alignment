@@ -517,15 +517,23 @@ export function analyzeJD(jdText: string): JDAnalysisResult {
   const totalKeywordWeight = keywords.reduce((sum, k) => sum + k.weight, 0);
 
   // capability 聚合：keyword -> capability -> category
+  // 展示层权重校准：降低 soft_skill / degree / general 对 capabilitySummary 排序的污染
+  const CATEGORY_MULTIPLIER: Record<string, number> = {
+    soft_skill: 0.5,
+    degree: 0.3,
+    general: 0.3,
+  };
+
   const capabilityMap = new Map<string, { keywords: string[]; totalWeight: number }>();
   for (const kw of keywords) {
     const cap = kw.capability || kw.category; // 回退到 category
+    const multiplier = CATEGORY_MULTIPLIER[kw.category] ?? 1.0;
     const existing = capabilityMap.get(cap);
     if (existing) {
       existing.keywords.push(kw.word);
-      existing.totalWeight += kw.weight;
+      existing.totalWeight += kw.weight * multiplier;
     } else {
-      capabilityMap.set(cap, { keywords: [kw.word], totalWeight: kw.weight });
+      capabilityMap.set(cap, { keywords: [kw.word], totalWeight: kw.weight * multiplier });
     }
   }
   const capabilitySummary: CapabilitySummary[] = Array.from(capabilityMap.entries())
