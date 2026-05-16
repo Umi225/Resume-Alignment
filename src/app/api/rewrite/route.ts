@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
       ],
       temperature: providerConfig.temperature,
       max_tokens: providerConfig.maxTokens,
+      response_format: { type: 'json_object' },
     });
 
     const rawContent = AIClient.extractContent(response);

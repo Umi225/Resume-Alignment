@@ -32,6 +32,7 @@ export interface ChatCompletionRequest {
   frequency_penalty?: number;
   presence_penalty?: number;
   stream?: boolean;
+  response_format?: { type: string };
 }
 
 // ============================================

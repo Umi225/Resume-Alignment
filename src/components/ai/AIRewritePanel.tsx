@@ -58,15 +58,16 @@ interface AIRewritePanelProps {
  * 允许 {待补充} 这类占位符通过（不是有效 JSON）
  */
 function looksLikeJSON(str: string): boolean {
-  const hasJsonStart = /^\s*[\{\[]/.test(str);
-  const hasJsonEnd = /[}\]]\s*$/.test(str);
-  if (!hasJsonStart || !hasJsonEnd) return false;
-  try {
-    JSON.parse(str);
-    return true;
-  } catch {
-    return false;
-  }
+  // 只检测明显的 AI 输出字段名泄漏，不拦截普通 JSON 占位符如 {"待补充":"指标"}
+  const leakPatterns = [
+    '"rewrittenBullets"',
+    '"original"',
+    '"optimized"',
+    '"changeType"',
+    '"explanation"',
+    '"confidence"',
+  ];
+  return leakPatterns.some((p) => str.includes(p));
 }
 
 // ============================================

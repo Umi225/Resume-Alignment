@@ -174,7 +174,7 @@ export function parseAIResponse(rawText: string, originalBullets: string[]): Par
     if (!extracted) {
       return {
         success: false,
-        error: 'AI 输出格式异常，请重新优化',
+        error: '无法从 AI 响应中提取有效 JSON，请重新优化',
       };
     }
     try {
@@ -182,7 +182,7 @@ export function parseAIResponse(rawText: string, originalBullets: string[]): Par
     } catch {
       return {
         success: false,
-        error: 'AI 输出格式异常，请重新优化',
+        error: 'AI 响应的 JSON 结构不完整，请重新优化',
       };
     }
   }
@@ -210,10 +210,17 @@ export function parseAIResponse(rawText: string, originalBullets: string[]): Par
  * 优先提取 markdown 代码块内的内容，避免前后说明文字污染 JSON
  */
 function cleanRawResponse(raw: string): string {
-  // 尝试提取 ```json ... ``` 或 ``` ... ``` 代码块内的内容
-  const codeBlockMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  if (codeBlockMatch) {
-    return codeBlockMatch[1].trim();
+  // 策略：从最后一个 ``` 倒推匹配 code block，避免 JSON 字符串值内部的 ``` 导致提前截断
+  const lastClose = raw.lastIndexOf('```');
+  if (lastClose > 0) {
+    const beforeClose = raw.slice(0, lastClose);
+    const openIdx = beforeClose.lastIndexOf('```');
+    if (openIdx >= 0) {
+      let content = beforeClose.slice(openIdx + 3).trim();
+      // 移除开头的 json 语言标识
+      content = content.replace(/^json\s*/i, '').trim();
+      return content;
+    }
   }
   // Fallback：逐行清理标记
   return raw
@@ -262,7 +269,14 @@ function extractJSON(text: string): string | null {
     } else if (ch === '}') {
       depth--;
       if (depth === 0 && start !== -1) {
-        return text.slice(start, i + 1);
+        const candidate = text.slice(start, i + 1);
+        try {
+          JSON.parse(candidate);
+          return candidate;
+        } catch {
+          // 不是合法 JSON，继续寻找下一个候选
+          start = -1;
+        }
       }
     }
   }
@@ -398,21 +412,9 @@ function validateResult(
       };
     }
 
-    // 检测到 JSON 对象/数组泄漏（整条 optimized 就是一个可解析的 JSON 结构）
-    if (/^\s*[\{\[]/.test(opt) && /[\}\]]\s*$/.test(opt)) {
-      try {
-        JSON.parse(opt);
-        return {
-          valid: false,
-          error: `AI 输出格式异常：第 ${i + 1} 条整体为 JSON 结构，不是自然语言`,
-        };
-      } catch {
-        // 不是有效 JSON（如 {待补充} 占位符），允许通过
-      }
-    }
-
-    // 检测到嵌套 JSON 字段名泄漏
-    if (opt.includes('"original":') || opt.includes('"optimized":') || opt.includes('"rewrittenBullets":')) {
+    // 只拦截明显的 AI 输出字段名泄漏，不拦截普通 JSON 占位符如 {"待补充":"指标"}
+    const leakPatterns = ['"rewrittenBullets"', '"original"', '"optimized"', '"changeType"', '"explanation"', '"confidence"'];
+    if (leakPatterns.some((p) => opt.includes(p))) {
       return {
         valid: false,
         error: `AI 输出格式异常：第 ${i + 1} 条包含 JSON 字段名泄漏`,
