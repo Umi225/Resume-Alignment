@@ -108,6 +108,39 @@ function getAssetBullets(result: AssetMatchResult): string[] {
   return [];
 }
 
+// 基于经历已有内容推断可迁移能力，不虚构
+function getTransferableSkills(result: AssetMatchResult): string[] {
+  const skills: string[] = [];
+  const text = [
+    getAssetTitle(result),
+    getAssetSubtitle(result),
+    ...getAssetBullets(result),
+    ...(result.asset as { tags?: string[] }).tags || [],
+  ]
+    .join(' ')
+    .toLowerCase();
+
+  const hints: { keywords: string[]; skill: string }[] = [
+    { keywords: ['沟通', '协调', '协作', '合作', '对接', '联系'], skill: '沟通协调' },
+    { keywords: ['内容', '文案', '写作', '编辑', '撰写', '文章'], skill: '内容表达' },
+    { keywords: ['项目', '推进', '推动', '落地', '执行', '管理'], skill: '项目推进' },
+    { keywords: ['用户', '客户', '需求', '体验', '调研'], skill: '用户理解' },
+    { keywords: ['组织', '统筹', '安排', '规划', '策划'], skill: '组织协作' },
+    { keywords: ['数据', '分析', '指标', '统计', '报表'], skill: '数据意识' },
+    { keywords: ['策划', '方案', '活动', '创意', '运营'], skill: '内容策划' },
+    { keywords: ['跨文化', '国际', '英文', '英语', '外语', '海外'], skill: '跨文化沟通' },
+    { keywords: ['研究', '调研', '分析', '报告', '论文'], skill: '研究分析' },
+  ];
+
+  for (const hint of hints) {
+    if (hint.keywords.some((kw) => text.includes(kw.toLowerCase()))) {
+      if (!skills.includes(hint.skill)) skills.push(hint.skill);
+    }
+  }
+
+  return skills;
+}
+
 // 推荐等级徽章配置
 const levelConfig: Record<
   'highly' | 'recommended' | 'optional',
@@ -125,6 +158,27 @@ const levelConfig: Record<
     label: '可选',
     className: 'bg-zinc-50 text-zinc-600 border-zinc-200',
   },
+};
+
+// 字段标签映射
+const fieldLabels: Record<string, string> = {
+  tags: '技术标签',
+  bullets: '项目描述',
+  name: '名称',
+  role: '担任角色',
+  company: '公司',
+  school: '学校',
+  major: '专业',
+  department: '部门',
+  location: '地点',
+  outcome: '项目成果',
+  description: '描述',
+  level: '级别',
+  issuer: '颁发机构',
+  courses: '相关课程',
+  category: '分类',
+  proficiency: '熟练度',
+  text: '文本',
 };
 
 // 技能/证书类型标签映射
@@ -265,6 +319,24 @@ export function JDRecommendations({
                       </>
                     )}
                   </div>
+                  {/* 命中关键词 */}
+                  {result.matchedKeywords.length > 0 ? (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                      <span className="text-micro text-zinc-400">命中 JD：</span>
+                      {result.matchedKeywords.map((kw) => (
+                        <span
+                          key={kw}
+                          className="rounded bg-emerald-50 px-1.5 py-0 text-[10px] font-medium text-emerald-700 border border-emerald-200"
+                        >
+                          {kw}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-1.5 text-micro text-zinc-400">
+                      暂无明显关键词命中
+                    </p>
+                  )}
                   {advice && (
                     <p className="mt-1 text-micro text-zinc-600 leading-relaxed">
                       {advice}
@@ -334,6 +406,87 @@ export function JDRecommendations({
               {/* Expanded content */}
               {isExpanded && (
                 <div className="border-t border-zinc-100 px-3 py-3 space-y-3">
+                  {/* 命中详情 */}
+                  {result.details.length > 0 && (
+                    <div className="rounded-lg border border-zinc-200 bg-white p-3">
+                      <p className="text-micro font-medium text-zinc-700 mb-2">
+                        关键词命中详情
+                      </p>
+                      <div className="space-y-1.5">
+                        {Object.entries(
+                          result.details.reduce((acc, d) => {
+                            if (!acc[d.matchedField]) acc[d.matchedField] = new Set();
+                            acc[d.matchedField].add(d.keyword);
+                            return acc;
+                          }, {} as Record<string, Set<string>>)
+                        ).map(([field, keywords]) => (
+                          <div key={field} className="flex items-start gap-2">
+                            <span className="shrink-0 rounded bg-zinc-100 px-1.5 py-0 text-[10px] text-zinc-500">
+                              {fieldLabels[field] || field}
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {Array.from(keywords).map((k) => (
+                                <span key={k} className="text-[11px] text-zinc-600">
+                                  {k}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 转行包装建议 */}
+                  {isExp && result.score < 40 && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3">
+                      <p className="text-micro font-semibold text-amber-700 mb-2">
+                        转行包装建议
+                      </p>
+                      {result.matchedKeywords.length === 0 ? (
+                        <p className="text-micro text-zinc-600 leading-relaxed">
+                          当前与 JD 的直接关联较弱，建议作为补充经历使用，并重点强化可迁移能力。
+                        </p>
+                      ) : (
+                        <>
+                          <p className="text-micro text-zinc-600 leading-relaxed mb-2">
+                            虽然直接匹配度有限，但该经历仍可从以下方向与目标岗位建立关联：
+                          </p>
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {result.matchedKeywords.map((kw) => (
+                              <span
+                                key={kw}
+                                className="rounded bg-white px-1.5 py-0 text-[10px] font-medium text-emerald-700 border border-emerald-200"
+                              >
+                                {kw}
+                              </span>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                      {(() => {
+                        const skills = getTransferableSkills(result);
+                        return skills.length > 0 ? (
+                          <div className="mt-1">
+                            <p className="text-micro text-zinc-500 mb-1">
+                              可迁移能力方向：
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {skills.map((s) => (
+                                <span
+                                  key={s}
+                                  className="rounded bg-amber-100 px-1.5 py-0 text-[10px] font-medium text-amber-700 border border-amber-200"
+                                >
+                                  {s}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null;
+                      })()}
+                    </div>
+                  )}
+
                   {/* AI 推荐版本 — 主展示 */}
                   {optimizedVersion && (
                     <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3">

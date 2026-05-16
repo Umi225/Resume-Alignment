@@ -6,7 +6,9 @@ import { JDInputPanel } from '@/components/jd/JDInputPanel';
 import { JDRecommendations } from '@/components/jd/JDRecommendations';
 import { AIRewritePanel } from '@/components/ai/AIRewritePanel';
 import { useResumeStore } from '@/stores/resumeStore';
-import { matchProfileToJD } from '@/lib/jdMatcher';
+import { cn } from '@/lib/utils';
+import { matchProfileToJD, getCategoryColor, getCategoryLabel } from '@/lib/jdMatcher';
+import { CAPABILITY_LABELS } from '@/lib/jd/capabilities';
 import type { JDAnalysisResult, AssetMatchResult } from '@/lib/jdMatcher';
 import type { Experience, Project } from '@/types/resume';
 import type { RewriteTargetType } from '@/lib/ai/types';
@@ -207,12 +209,85 @@ function JDAnalysisView({
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
-      {/* 轻量状态提示 */}
-      <div className="card p-4 text-center">
-        <p className="text-small text-zinc-600">
-          AI 已完成 JD 对齐分析，已按当前 JD 推荐相关经历
-        </p>
+      {/* JD 关键词分析 */}
+      <div className="card p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="text-caption font-medium text-zinc-800">
+            已识别 JD 关键词
+          </h4>
+          <span className="text-micro text-zinc-400">
+            共 {analysis.keywords.length} 个
+          </span>
+        </div>
+        {analysis.keywords.length === 0 ? (
+          <p className="text-micro text-zinc-500">未识别到关键词</p>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {analysis.keywords.map((kw) => (
+              <span
+                key={kw.word}
+                className={cn(
+                  'inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium border',
+                  getCategoryColor(kw.category)
+                )}
+              >
+                {kw.word}
+                <span className="opacity-60">· {getCategoryLabel(kw.category)}</span>
+              </span>
+            ))}
+          </div>
+        )}
+        {analysis.keywords.length < 3 && (
+          <p className="mt-2 text-micro text-amber-600">
+            当前 JD 识别到的关键词较少，推荐结果可能不够准确，建议补充岗位职责/任职要求。
+          </p>
+        )}
       </div>
+
+      {/* capability 聚合（轻量展示） */}
+      {analysis.capabilitySummary.length > 0 && (
+        <div className="card p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-caption font-medium text-zinc-800">
+              能力维度
+            </h4>
+            <span className="text-micro text-zinc-400">
+              共 {analysis.capabilitySummary.length} 项
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {analysis.capabilitySummary.map((cap) => (
+              <span
+                key={cap.capability}
+                className="inline-flex items-center gap-1 rounded bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-700 border border-zinc-200"
+                title={`命中关键词：${cap.keywords.join('、')}`}
+              >
+                {CAPABILITY_LABELS[cap.capability] || cap.capability}
+                <span className="text-zinc-400">· {cap.totalWeight}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 硬性要求 */}
+      {analysis.requirements.length > 0 && (
+        <div className="card p-4">
+          <h4 className="text-caption font-medium text-zinc-800 mb-2">
+            硬性要求
+          </h4>
+          <div className="flex flex-wrap gap-1.5">
+            {analysis.requirements.map((req, idx) => (
+              <span
+                key={idx}
+                className="rounded bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-600"
+              >
+                {req.rawText}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {selectedCount > 0 && (
         <div className="card p-4 border-blue-200 bg-blue-50/50">

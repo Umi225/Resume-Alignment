@@ -17,7 +17,6 @@ import {
   Pencil,
   Trash2,
   Star,
-  Wand2,
 } from 'lucide-react';
 
 type ExperienceItem =
@@ -54,7 +53,6 @@ export function ExperienceCard({
 }: ExperienceCardProps) {
   const config = kindConfig[item.kind];
   const Icon = config.icon;
-  const hasOptimized = (item.kind === 'experience' || item.kind === 'project') && (item as Experience | Project).optimizedVersion;
 
   return (
     <div
@@ -79,12 +77,6 @@ export function ExperienceCard({
           )}
           {item.kind === 'project' && item.featured && (
             <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-          )}
-          {hasOptimized && (
-            <span className="inline-flex items-center gap-0.5 rounded bg-blue-50 px-1.5 py-0 text-[10px] font-medium text-blue-600">
-              <Wand2 className="h-2.5 w-2.5" />
-              当前JD已生成推荐
-            </span>
           )}
         </div>
         <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
